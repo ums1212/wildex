@@ -241,10 +241,7 @@ fun MainMenuScreen(
                 )
             }
             composable<WildexCaptureTabRoute> {
-                WildexMainTabEmptyScreen(
-                    title = WildexCaptureTabRoute.mainMenuTabLabel(),
-                    bodyText = "촬영·스캔 화면입니다. 콘텐츠는 추후 연결됩니다.",
-                )
+                CaptureScreen()
             }
             composable<WildexSearchTabRoute> {
                 WildexMainTabEmptyScreen(
