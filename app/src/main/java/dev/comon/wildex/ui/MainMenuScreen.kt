@@ -1,0 +1,554 @@
+package dev.comon.wildex.ui
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import dev.comon.wildex.R
+import dev.comon.wildex.component.WildexLogoutConfirmDialog
+import dev.comon.wildex.component.WildexMenuButton
+import dev.comon.wildex.navigation.WildexCaptureTabRoute
+import dev.comon.wildex.navigation.WildexJournalTabRoute
+import dev.comon.wildex.navigation.WildexMainBottomTabRoute
+import dev.comon.wildex.navigation.WildexMainMenuRoute
+import dev.comon.wildex.navigation.WildexSearchTabRoute
+import dev.comon.wildex.navigation.WildexSettingsTabRoute
+import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
+import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
+import dev.comon.wildex.ui.theme.WildexDimens
+import dev.comon.wildex.ui.theme.WildexPalette
+import dev.comon.wildex.ui.theme.WildexTheme
+import java.util.Locale
+
+private data class MainMenuBottomTabUi(
+    val route: WildexMainBottomTabRoute,
+    val icon: ImageVector,
+    val label: String,
+)
+
+private val mainMenuBottomTabUiRows: List<MainMenuBottomTabUi> = listOf(
+    MainMenuBottomTabUi(WildexJournalTabRoute, Icons.AutoMirrored.Filled.MenuBook, "JOURNAL"),
+    MainMenuBottomTabUi(WildexCaptureTabRoute, Icons.Filled.CameraAlt, "CAPTURE"),
+    MainMenuBottomTabUi(WildexSearchTabRoute, Icons.Filled.Search, "SEARCH"),
+    MainMenuBottomTabUi(WildexSettingsTabRoute, Icons.Filled.Settings, "SETTINGS"),
+)
+
+/** 테두리·하드 섀도 예약·아이콘·라벨이 잘리지 않도록 하는 하단 탭 행 높이 */
+private val MainMenuBottomBarHeight = 72.dp
+
+private fun WildexMainBottomTabRoute.mainMenuTabLabel(): String =
+    mainMenuBottomTabUiRows.first { it.route == this }.label
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainMenuScreen(
+    isLoggedIn: Boolean,
+    userNickname: String,
+    onLoginClick: () -> Unit,
+    onLogout: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** 미리보기·테스트에서 다이얼로그를 처음부터 열 때만 true. 앱에서는 기본 false. */
+    initialLogoutDialogOpen: Boolean = false,
+) {
+    var showLogoutDialog by remember(initialLogoutDialogOpen) {
+        mutableStateOf(initialLogoutDialogOpen)
+    }
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
+
+    if (showLogoutDialog) {
+        WildexLogoutConfirmDialog(
+            onDismiss = { showLogoutDialog = false },
+            onConfirmLogout = onLogout,
+        )
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    MainMenuTopBarDpadIcon()
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isLoggedIn) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .border(
+                                        width = WildexDimens.borderStrokeChunky,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        shape = RectangleShape,
+                                    )
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                        shape = RectangleShape,
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = userNickname.uppercase(Locale.getDefault()),
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "로그인",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(
+                                    onClick = onLoginClick,
+                                ),
+                            )
+                        }
+                    }
+                    if (isLoggedIn) {
+                        MainMenuProfileAvatar(
+                            onClick = { showLogoutDialog = true },
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.size(44.dp))
+                    }
+                }
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(WildexDimens.borderStrokeChunky)
+                        .background(MaterialTheme.colorScheme.onSurface),
+                )
+            }
+        },
+        bottomBar = {
+            MainMenuBottomBar(
+                tabs = mainMenuBottomTabUiRows,
+                selectedTab = selectedBottomTab,
+                onTabClick = { tab ->
+                    val destination = navBackStackEntry?.destination
+                    if (destination.wildexSelectedMainBottomTab() == tab) {
+                        navController.popBackStack(WildexMainMenuRoute, inclusive = false)
+                    } else {
+                        navController.navigateToWildexMainBottomTab(tab)
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = WildexMainMenuRoute,
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+        ) {
+            composable<WildexMainMenuRoute> {
+                MainMenuHomeContent(
+                    onCaptureClick = {
+                        navController.navigateToWildexMainBottomTab(WildexCaptureTabRoute)
+                    },
+                    onJournalClick = {
+                        navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
+                    },
+                    onSettingsClick = {
+                        navController.navigateToWildexMainBottomTab(WildexSettingsTabRoute)
+                    },
+                )
+            }
+            composable<WildexJournalTabRoute> {
+                WildexMainTabEmptyScreen(
+                    title = WildexJournalTabRoute.mainMenuTabLabel(),
+                    bodyText = "일지 화면입니다. 콘텐츠는 추후 연결됩니다.",
+                )
+            }
+            composable<WildexCaptureTabRoute> {
+                WildexMainTabEmptyScreen(
+                    title = WildexCaptureTabRoute.mainMenuTabLabel(),
+                    bodyText = "촬영·스캔 화면입니다. 콘텐츠는 추후 연결됩니다.",
+                )
+            }
+            composable<WildexSearchTabRoute> {
+                WildexMainTabEmptyScreen(
+                    title = WildexSearchTabRoute.mainMenuTabLabel(),
+                    bodyText = "검색 화면입니다. 콘텐츠는 추후 연결됩니다.",
+                )
+            }
+            composable<WildexSettingsTabRoute> {
+                WildexMainTabEmptyScreen(
+                    title = WildexSettingsTabRoute.mainMenuTabLabel(),
+                    bodyText = "설정 화면입니다. 콘텐츠는 추후 연결됩니다.",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MainMenuHomeContent(
+    onCaptureClick: () -> Unit,
+    onJournalClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        MainMenuSectionLabel()
+        WildexMenuButton(
+            titleText = "Capture",
+            subtitleText = "Scan new specimen",
+            imageVector = Icons.Filled.CameraAlt,
+            onClick = onCaptureClick,
+            modifier = Modifier.fillMaxWidth(),
+            backgroundColor = WildexPalette.Primary,
+            iconBackgroundColor = WildexPalette.SurfaceContainerLowest,
+            iconTintColor = WildexPalette.Primary,
+            titleTextColor = WildexPalette.OnPrimary,
+            subtitleTextColor = WildexPalette.OnPrimary.copy(alpha = 0.92f),
+            frameColor = WildexPalette.OnSurface,
+            shadowBlockColor = WildexPalette.OnSurface,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            WildexMenuButton(
+                titleText = "Journal",
+                subtitleText = "Daily record",
+                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                onClick = onJournalClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                backgroundColor = WildexPalette.SurfaceContainerLowest,
+                iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
+                iconTintColor = WildexPalette.OnSurface,
+                titleTextColor = WildexPalette.OnSurface,
+                subtitleTextColor = WildexPalette.SecondaryMuted,
+                frameColor = WildexPalette.OnSurface,
+                shadowBlockColor = WildexPalette.OnSurface,
+            )
+            WildexMenuButton(
+                titleText = "Settings",
+                subtitleText = "Configure",
+                imageVector = Icons.Filled.Settings,
+                onClick = onSettingsClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                backgroundColor = WildexPalette.SurfaceContainerLowest,
+                iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
+                iconTintColor = WildexPalette.OnSurface,
+                titleTextColor = WildexPalette.OnSurface,
+                subtitleTextColor = WildexPalette.SecondaryMuted,
+                frameColor = WildexPalette.OnSurface,
+                shadowBlockColor = WildexPalette.OnSurface,
+            )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun MainMenuTopBarDpadIcon() {
+    Image(
+        painter = painterResource(R.drawable.dpad),
+        contentDescription = "컨트롤러",
+        modifier = Modifier.size(32.dp),
+        contentScale = ContentScale.Fit,
+    )
+}
+
+@Composable
+private fun MainMenuProfileAvatar(
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .border(
+                width = WildexDimens.borderStrokeChunky,
+                color = MaterialTheme.colorScheme.onSurface,
+                shape = CircleShape,
+            )
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Person,
+            contentDescription = "프로필",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(28.dp),
+        )
+    }
+}
+
+@Composable
+private fun MainMenuSectionLabel() {
+    val depth = WildexDimens.shadowOffsetHard
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(end = depth, bottom = depth),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(depth, depth)
+                .background(WildexPalette.OnSurface, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .border(
+                    width = WildexDimens.borderStrokeChunky,
+                    color = WildexPalette.OnSurface,
+                    shape = RectangleShape,
+                )
+                .background(WildexPalette.Primary, RectangleShape)
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+        ) {
+            Text(
+                text = "MAIN MENU",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = WildexPalette.OnPrimary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainMenuBottomBar(
+    tabs: List<MainMenuBottomTabUi>,
+    selectedTab: WildexMainBottomTabRoute?,
+    onTabClick: (WildexMainBottomTabRoute) -> Unit,
+) {
+    // navigationBarsPadding을 Row와 같은 높이 제한에 두면, 패딩이 Row 안쪽에서 높이를 잡아먹어 탭이 세로로 잘림.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(MainMenuBottomBarHeight)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        ) {
+            tabs.forEach { tab ->
+                val selected = tab.route == selectedTab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                ) {
+                    MainMenuBottomBarTabCell(
+                        selected = selected,
+                        tab = tab,
+                        onClick = { onTabClick(tab.route) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MainMenuBottomBarTabCell(
+    selected: Boolean,
+    tab: MainMenuBottomTabUi,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depthNormal = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    /** 선택 탭은 항상 눌린(인셋) 상태, 비선택은 손가락 누를 때만 */
+    val visuallyPressed = selected || pressed
+    val shadowOffset = if (visuallyPressed) depthPressed else depthNormal
+    val contentInset = if (visuallyPressed) depthNormal - depthPressed else 0.dp
+    val faceColor =
+        if (selected) WildexPalette.Primary else MaterialTheme.colorScheme.surfaceContainerLowest
+    val contentColor =
+        if (selected) WildexPalette.OnPrimary else MaterialTheme.colorScheme.onSurface
+    val frameColor = WildexPalette.OnSurface
+    val shadowColor = WildexPalette.OnSurface
+
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(end = depthNormal, bottom = depthNormal),
+        ) {
+            Box {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .offset(shadowOffset, shadowOffset)
+                        .background(shadowColor, RectangleShape),
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset(contentInset, contentInset)
+                        .clip(RectangleShape)
+                        .border(WildexDimens.borderStrokeChunky, frameColor, RectangleShape)
+                        .background(faceColor, RectangleShape)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            role = Role.Button,
+                            onClick = onClick,
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.label,
+                        tint = contentColor,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = tab.label,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = contentColor,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun MainMenuScreenPreviewLoggedIn() {
+    WildexTheme {
+        MainMenuScreen(
+            isLoggedIn = true,
+            userNickname = "TRAINER_L_10",
+            onLoginClick = { },
+            onLogout = { },
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun MainMenuScreenPreviewLoggedOut() {
+    WildexTheme {
+        MainMenuScreen(
+            isLoggedIn = false,
+            userNickname = "",
+            onLoginClick = { },
+            onLogout = { },
+        )
+    }
+}
+
+@Preview(
+    name = "로그아웃 다이얼로그",
+    showBackground = true,
+    widthDp = 360,
+    heightDp = 780,
+)
+@Composable
+private fun MainMenuScreenPreviewLogoutDialog() {
+    WildexTheme {
+        MainMenuScreen(
+            isLoggedIn = true,
+            userNickname = "TRAINER_L_10",
+            onLoginClick = { },
+            onLogout = { },
+            initialLogoutDialogOpen = true,
+        )
+    }
+}
