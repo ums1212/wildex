@@ -1,0 +1,35 @@
+---
+description: Wildex Jetpack Compose UI는 DESIGN.md와 ui/theme 디자인 시스템을 따른다
+globs: app/src/main/java/**/*.kt
+alwaysApply: false
+---
+
+# Wildex UI / 디자인 시스템
+
+Compose UI를 작성·수정할 때 아래를 **반드시** 따른다.
+
+## 참고 문서·코드
+
+- 창의적 방향·금지 사항·컴포넌트 규칙: 루트 **`DESIGN.md`**
+- 구현 소스: **`app/src/main/java/dev/comon/wildex/ui/theme/`**
+  - `Color.kt` — `WildexPalette` (정적 토큰; 화면에서는 가능하면 테마 경유)
+  - `Theme.kt` — `WildexTheme`, 라이트/다크 `ColorScheme`
+  - `Type.kt` — `WildexTypography` (Space Grotesk / Public Sans)
+  - `WildexDimens.kt` — 보더 4dp, 하드 섀도 오프셋, 그리드, 스펙 시트 라디우스
+  - `WildexShapes.kt` — `cartridge`(0dp) vs `specSheet`(둥근 형태)
+  - `WildexExtraColorScheme.kt` — `WildexTheme.extraColors`
+  - `WildexComponentDefaults.kt` — 버튼·텍스트필드 기본 색/보더
+- 토큰·컴포넌트 동작 확인용: **`ui/DesignSystemTestScreen.kt`**
+
+## 해야 할 것
+
+- 루트는 `WildexTheme { ... }`로 감싼다.
+- 색: `MaterialTheme.colorScheme`, 필요 시 `WildexTheme.extraColors`. 의미에 맞는 역할(primary, surface, outline 등)을 쓴다.
+- 간격·보더·라디우스: `WildexDimens`, 쉐이프는 `WildexTheme(..., shapes = ...)` 또는 `WildexShapes`를 DESIGN.md/스펙에 맞게 선택한다.
+- 버튼·Outlined 입력: `WildexButtonDefaults`, `WildexInputDefaults`를 우선 사용한다.
+- DESIGN.md와 충돌 시 **DESIGN.md의 두께(4px 스트로크, 직각 vs 스펙 시트 예외 등)**를 명시적으로 따른다.
+
+## 하지 말 것
+
+- UI에 `Color(0xFF…)`, `TextStyle(fontSize = …sp)` 등 **디자인 토큰 하드코딩**으로 시스템을 우회하지 않는다. (Material/확장 토큰에 없는 예외만 `WildexPalette` 등 한곳에 정의된 상수 사용)
+- 의미 없는 magic number `dp`/`sp` 남발; 기존 `WildexDimens`·Typography 스케일을 먼저 본다.
