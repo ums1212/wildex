@@ -47,7 +47,7 @@ object WildexButtonDefaults {
     @Composable
     fun chunkyOutlineBorder(): BorderStroke = BorderStroke(
         width = WildexDimens.borderStrokeChunky,
-        color = MaterialTheme.colorScheme.outline,
+        color = WildexTheme.extraColors.cartridgeOutline,
     )
 }
 

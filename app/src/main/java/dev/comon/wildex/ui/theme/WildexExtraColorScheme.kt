@@ -13,6 +13,10 @@ data class WildexExtraColorScheme(
     val surfaceContainerHighest: Color,
     /** 하드 오프셋 "질량" 섀도우 */
     val shadowMass: Color,
+    /** 두꺼운 카트리지 외곽선 (다크: DESIGN.md `on-surface` #E2E2E2) */
+    val cartridgeOutline: Color,
+    /** 하드 오프셋 블록 (다크: DESIGN.md §5 불투명 블랙 #000000) */
+    val cartridgeHardShadow: Color,
     /** 스펙 시트 Inverted 버튼 (#333) */
     val invertedButtonBackground: Color,
     val invertedButtonContent: Color,
@@ -23,18 +27,22 @@ fun lightWildexExtraColorScheme(): WildexExtraColorScheme = WildexExtraColorSche
     surfaceContainerLowest = WildexPalette.SurfaceContainerLowest,
     surfaceContainerHighest = WildexPalette.SurfaceContainerHighest,
     shadowMass = WildexPalette.SecondaryMuted,
+    cartridgeOutline = WildexPalette.OnSurface,
+    cartridgeHardShadow = WildexPalette.OnSurface,
     invertedButtonBackground = WildexPalette.OnSecondarySurface,
     invertedButtonContent = WildexPalette.Neutral,
     searchBarBorderFocused = WildexPalette.Primary,
 )
 
 fun darkWildexExtraColorScheme(): WildexExtraColorScheme = WildexExtraColorScheme(
-    surfaceContainerLowest = WildexPalette.DarkSurface,
-    surfaceContainerHighest = WildexPalette.SurfaceContainerHighest,
-    shadowMass = WildexPalette.SecondaryMuted,
-    invertedButtonBackground = WildexPalette.SurfaceContainerHighest,
-    invertedButtonContent = WildexPalette.DarkOnSurface,
-    searchBarBorderFocused = WildexPalette.Primary,
+    surfaceContainerLowest = WildexPalette.NightVoid,
+    surfaceContainerHighest = WildexPalette.NightSurfaceModuleHighest,
+    shadowMass = Color.Black,
+    cartridgeOutline = WildexPalette.NightOnSurface,
+    cartridgeHardShadow = Color.Black,
+    invertedButtonBackground = WildexPalette.NightSurfaceModuleHighest,
+    invertedButtonContent = WildexPalette.NightOnSurface,
+    searchBarBorderFocused = WildexPalette.NightPrimaryMuted,
 )
 
 val LocalWildexExtraColors = staticCompositionLocalOf<WildexExtraColorScheme> {

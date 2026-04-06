@@ -38,8 +38,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
+import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
-import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
 import java.util.Locale
 
@@ -89,7 +89,14 @@ private fun WildexLogoutConfirmDialogCard(
     modifier: Modifier = Modifier,
 ) {
     val depth = WildexDimens.shadowOffsetHard
-    val frameColor = WildexPalette.OnSurface
+    val outline = WildexTheme.extraColors.cartridgeOutline
+    val hardShadow = WildexTheme.extraColors.cartridgeHardShadow
+    val bodyInk = MaterialTheme.colorScheme.onSurface
+    val cardSurface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val cardBodySurface = MaterialTheme.colorScheme.surfaceVariant
+    val dismissFill = MaterialTheme.colorScheme.surfaceContainerLowest
+    val missionBg = WildexColorRoles.missionCtaBackground()
+    val missionFg = WildexColorRoles.missionCtaForeground()
 
     Box(
         modifier = modifier
@@ -102,14 +109,14 @@ private fun WildexLogoutConfirmDialogCard(
             modifier = Modifier
                 .matchParentSize()
                 .offset(depth, depth)
-                .background(frameColor, RectangleShape),
+                .background(hardShadow, RectangleShape),
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .border(WildexDimens.borderStrokeChunky, frameColor, RectangleShape)
-                .background(WildexPalette.SurfaceContainerLowest, RectangleShape),
+                .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
+                .background(cardSurface, RectangleShape),
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -117,7 +124,7 @@ private fun WildexLogoutConfirmDialogCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(WildexPalette.Primary, RectangleShape)
+                        .background(missionBg, RectangleShape)
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -125,29 +132,29 @@ private fun WildexLogoutConfirmDialogCard(
                     Icon(
                         imageVector = Icons.Filled.Warning,
                         contentDescription = "경고",
-                        tint = WildexPalette.OnPrimary,
+                        tint = missionFg,
                         modifier = Modifier.size(28.dp),
                     )
                     Text(
                         text = titleText.uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = WildexPalette.OnPrimary,
+                        color = missionFg,
                     )
                 }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(WildexDimens.borderStrokeChunky)
-                        .background(frameColor, RectangleShape),
+                        .background(outline, RectangleShape),
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(WildexPalette.SecondarySurface, RectangleShape)
+                        .background(cardBodySurface, RectangleShape)
                         .drawBehind {
                             val spacing = 5.dp.toPx()
                             val r = 0.9.dp.toPx()
-                            val dot = frameColor.copy(alpha = 0.14f)
+                            val dot = outline.copy(alpha = 0.14f)
                             var py = spacing * 0.5f
                             while (py < size.height) {
                                 var px = spacing * 0.5f
@@ -168,14 +175,14 @@ private fun WildexLogoutConfirmDialogCard(
                     Text(
                         text = messageText.uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = frameColor,
+                        color = bodyInk,
                         textAlign = TextAlign.Center,
                     )
                 }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(WildexPalette.SecondarySurface, RectangleShape)
+                        .background(cardBodySurface, RectangleShape)
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -185,14 +192,14 @@ private fun WildexLogoutConfirmDialogCard(
                             onConfirmLogout()
                             onDismiss()
                         },
-                        containerColor = WildexPalette.Primary,
-                        contentColor = WildexPalette.OnPrimary,
+                        containerColor = missionBg,
+                        contentColor = missionFg,
                     )
                     WildexLogoutDialogActionButton(
                         text = dismissText,
                         onClick = onDismiss,
-                        containerColor = WildexPalette.SurfaceContainerLowest,
-                        contentColor = frameColor,
+                        containerColor = dismissFill,
+                        contentColor = bodyInk,
                     )
                 }
             }
@@ -202,13 +209,13 @@ private fun WildexLogoutConfirmDialogCard(
                     .offset((-WildexDimens.gridStep), (-WildexDimens.gridStep))
                     .size(12.dp)
                     .zIndex(1f)
-                    .background(frameColor, RectangleShape),
+                    .background(outline, RectangleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(WildexPalette.SurfaceContainerLowest, RectangleShape),
+                        .background(cardSurface, RectangleShape),
                 )
             }
             Box(
@@ -217,13 +224,13 @@ private fun WildexLogoutConfirmDialogCard(
                     .offset(WildexDimens.gridStep, WildexDimens.gridStep)
                     .size(12.dp)
                     .zIndex(1f)
-                    .background(frameColor, RectangleShape),
+                    .background(outline, RectangleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(WildexPalette.SurfaceContainerLowest, RectangleShape),
+                        .background(cardSurface, RectangleShape),
                 )
             }
         }
@@ -238,7 +245,8 @@ private fun WildexLogoutDialogActionButton(
     contentColor: Color,
 ) {
     val depth = WildexDimens.shadowOffsetHard
-    val frameColor = WildexPalette.OnSurface
+    val outline = WildexTheme.extraColors.cartridgeOutline
+    val hardShadow = WildexTheme.extraColors.cartridgeHardShadow
     val interactionSource = remember { MutableInteractionSource() }
 
     Box(
@@ -251,12 +259,12 @@ private fun WildexLogoutDialogActionButton(
                 modifier = Modifier
                     .matchParentSize()
                     .offset(depth, depth)
-                    .background(frameColor, RectangleShape),
+                    .background(hardShadow, RectangleShape),
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(WildexDimens.borderStrokeChunky, frameColor, RectangleShape)
+                    .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
                     .background(containerColor, RectangleShape)
                     .clickable(
                         interactionSource = interactionSource,
@@ -284,7 +292,7 @@ private fun WildexLogoutConfirmDialogPreview() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(WildexPalette.OnSurface.copy(alpha = 0.55f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f)),
             contentAlignment = Alignment.Center,
         ) {
             WildexLogoutConfirmDialogCard(

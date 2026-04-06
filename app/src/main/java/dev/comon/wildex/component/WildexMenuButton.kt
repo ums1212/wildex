@@ -37,17 +37,61 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import android.content.res.Configuration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
-import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
 import java.util.Locale
 
 /**
+ * 메인 메뉴 등에서 쓰는 사전 정의 색 조합. [MaterialTheme]·[WildexTheme.extraColors]에 맞춰 다크/라이트에 대응합니다.
+ * [WildexMenuButton]에 지정하면 아래 색 파라미터는 무시됩니다.
+ */
+enum class WildexMenuButtonStyle {
+    /** 브랜드 레드 면 + 아이콘 웰(Capture 등 주요 액션). */
+    Primary,
+    /** 카트리지형 중립 면(Journal / Settings 등). */
+    Secondary,
+}
+
+private data class WildexMenuButtonColorSet(
+    val backgroundColor: Color,
+    val iconBackgroundColor: Color,
+    val iconTintColor: Color,
+    val titleTextColor: Color,
+    val subtitleTextColor: Color,
+    val frameColor: Color,
+    val shadowBlockColor: Color,
+)
+
+@Composable
+private fun wildexMenuButtonColorSet(style: WildexMenuButtonStyle): WildexMenuButtonColorSet = when (style) {
+    WildexMenuButtonStyle.Primary -> WildexMenuButtonColorSet(
+        backgroundColor = WildexColorRoles.missionCtaBackground(),
+        iconBackgroundColor = WildexTheme.extraColors.surfaceContainerHighest,
+        iconTintColor = WildexColorRoles.missionCtaIconAccent(),
+        titleTextColor = WildexColorRoles.missionCtaForeground(),
+        subtitleTextColor = WildexColorRoles.missionCtaForeground().copy(alpha = 0.92f),
+        frameColor = WildexTheme.extraColors.cartridgeOutline,
+        shadowBlockColor = WildexTheme.extraColors.cartridgeHardShadow,
+    )
+    WildexMenuButtonStyle.Secondary -> WildexMenuButtonColorSet(
+        backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        iconBackgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        iconTintColor = MaterialTheme.colorScheme.onSurface,
+        titleTextColor = MaterialTheme.colorScheme.onSurface,
+        subtitleTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        frameColor = WildexTheme.extraColors.cartridgeOutline,
+        shadowBlockColor = WildexTheme.extraColors.shadowMass,
+    )
+}
+
+/**
  * 메인 메뉴용 카트리지 스타일 버튼: 직각 두꺼운 보더 + 하드 오프셋 프레임(DESIGN.md).
  *
- * 배경·아이콘 영역·텍스트 색은 호출부에서 바꿀 수 있습니다.
+ * [style]이 null이면 [backgroundColor] 등 개별 색을 사용하고, 지정 시 현재 테마에 맞는 조합으로 위 색들을 덮어씁니다.
  */
 @Composable
 fun WildexMenuButton(
@@ -56,33 +100,47 @@ fun WildexMenuButton(
     imageVector: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    style: WildexMenuButtonStyle? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
     iconBackgroundColor: Color = WildexTheme.extraColors.surfaceContainerHighest,
     iconTintColor: Color = MaterialTheme.colorScheme.onSurface,
     titleTextColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    frameColor: Color = MaterialTheme.colorScheme.onSurface,
+    frameColor: Color = WildexTheme.extraColors.cartridgeOutline,
     shadowBlockColor: Color = WildexTheme.extraColors.shadowMass,
     iconContentDescription: String? = null,
     enabled: Boolean = true,
 ) {
+    val colors = if (style != null) {
+        wildexMenuButtonColorSet(style)
+    } else {
+        WildexMenuButtonColorSet(
+            backgroundColor = backgroundColor,
+            iconBackgroundColor = iconBackgroundColor,
+            iconTintColor = iconTintColor,
+            titleTextColor = titleTextColor,
+            subtitleTextColor = subtitleTextColor,
+            frameColor = frameColor,
+            shadowBlockColor = shadowBlockColor,
+        )
+    }
     WildexMenuButtonImpl(
         titleText = titleText,
         subtitleText = subtitleText,
         onClick = onClick,
         modifier = modifier,
-        backgroundColor = backgroundColor,
-        iconBackgroundColor = iconBackgroundColor,
-        titleTextColor = titleTextColor,
-        subtitleTextColor = subtitleTextColor,
-        frameColor = frameColor,
-        shadowBlockColor = shadowBlockColor,
+        backgroundColor = colors.backgroundColor,
+        iconBackgroundColor = colors.iconBackgroundColor,
+        titleTextColor = colors.titleTextColor,
+        subtitleTextColor = colors.subtitleTextColor,
+        frameColor = colors.frameColor,
+        shadowBlockColor = colors.shadowBlockColor,
         enabled = enabled,
         icon = {
             Icon(
                 imageVector = imageVector,
                 contentDescription = iconContentDescription ?: titleText,
-                tint = iconTintColor,
+                tint = colors.iconTintColor,
                 modifier = Modifier.size(28.dp),
             )
         },
@@ -96,33 +154,47 @@ fun WildexMenuButton(
     @DrawableRes iconResId: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    style: WildexMenuButtonStyle? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
     iconBackgroundColor: Color = WildexTheme.extraColors.surfaceContainerHighest,
     iconTintColor: Color = MaterialTheme.colorScheme.onSurface,
     titleTextColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    frameColor: Color = MaterialTheme.colorScheme.onSurface,
+    frameColor: Color = WildexTheme.extraColors.cartridgeOutline,
     shadowBlockColor: Color = WildexTheme.extraColors.shadowMass,
     iconContentDescription: String? = null,
     enabled: Boolean = true,
 ) {
+    val colors = if (style != null) {
+        wildexMenuButtonColorSet(style)
+    } else {
+        WildexMenuButtonColorSet(
+            backgroundColor = backgroundColor,
+            iconBackgroundColor = iconBackgroundColor,
+            iconTintColor = iconTintColor,
+            titleTextColor = titleTextColor,
+            subtitleTextColor = subtitleTextColor,
+            frameColor = frameColor,
+            shadowBlockColor = shadowBlockColor,
+        )
+    }
     WildexMenuButtonImpl(
         titleText = titleText,
         subtitleText = subtitleText,
         onClick = onClick,
         modifier = modifier,
-        backgroundColor = backgroundColor,
-        iconBackgroundColor = iconBackgroundColor,
-        titleTextColor = titleTextColor,
-        subtitleTextColor = subtitleTextColor,
-        frameColor = frameColor,
-        shadowBlockColor = shadowBlockColor,
+        backgroundColor = colors.backgroundColor,
+        iconBackgroundColor = colors.iconBackgroundColor,
+        titleTextColor = colors.titleTextColor,
+        subtitleTextColor = colors.subtitleTextColor,
+        frameColor = colors.frameColor,
+        shadowBlockColor = colors.shadowBlockColor,
         enabled = enabled,
         icon = {
             Icon(
                 painter = painterResource(iconResId),
                 contentDescription = iconContentDescription ?: titleText,
-                tint = iconTintColor,
+                tint = colors.iconTintColor,
                 modifier = Modifier.size(28.dp),
             )
         },
@@ -232,67 +304,62 @@ private fun WildexMenuButtonImpl(
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable
-private fun WildexMenuButtonPreviewGrid() {
-    WildexTheme {
-        Column(
+private fun WildexMenuButtonPreviewGridLight() {
+    WildexTheme(darkTheme = false) {
+        WildexMenuButtonPreviewGridContent()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun WildexMenuButtonPreviewGridDark() {
+    WildexTheme(darkTheme = true) {
+        WildexMenuButtonPreviewGridContent()
+    }
+}
+
+@Composable
+private fun WildexMenuButtonPreviewGridContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        WildexMenuButton(
+            titleText = "Capture",
+            subtitleText = "Scan new specimen",
+            imageVector = Icons.Filled.CameraAlt,
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            style = WildexMenuButtonStyle.Primary,
+        )
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .height(160.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             WildexMenuButton(
-                titleText = "Capture",
-                subtitleText = "Scan new specimen",
-                imageVector = Icons.Filled.CameraAlt,
+                titleText = "Collection",
+                subtitleText = "Findings",
+                imageVector = Icons.AutoMirrored.Filled.MenuBook,
                 onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                backgroundColor = WildexPalette.Primary,
-                iconBackgroundColor = WildexPalette.SurfaceContainerLowest,
-                iconTintColor = WildexPalette.Primary,
-                titleTextColor = WildexPalette.OnPrimary,
-                subtitleTextColor = WildexPalette.OnPrimary.copy(alpha = 0.92f),
-                frameColor = WildexPalette.OnSurface,
-                shadowBlockColor = WildexPalette.OnSurface,
-            )
-            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                WildexMenuButton(
-                    titleText = "Collection",
-                    subtitleText = "Findings",
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                    onClick = {},
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    backgroundColor = WildexPalette.SurfaceContainerLowest,
-                    iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                    iconTintColor = WildexPalette.OnSurface,
-                    titleTextColor = WildexPalette.OnSurface,
-                    subtitleTextColor = WildexPalette.SecondaryMuted,
-                    frameColor = WildexPalette.OnSurface,
-                    shadowBlockColor = WildexPalette.OnSurface,
-                )
-                WildexMenuButton(
-                    titleText = "Settings",
-                    subtitleText = "Configure",
-                    imageVector = Icons.Filled.Settings,
-                    onClick = {},
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    backgroundColor = WildexPalette.SurfaceContainerLowest,
-                    iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                    iconTintColor = WildexPalette.OnSurface,
-                    titleTextColor = WildexPalette.OnSurface,
-                    subtitleTextColor = WildexPalette.SecondaryMuted,
-                    frameColor = WildexPalette.OnSurface,
-                    shadowBlockColor = WildexPalette.OnSurface,
-                )
-            }
+                    .weight(1f)
+                    .fillMaxHeight(),
+                style = WildexMenuButtonStyle.Secondary,
+            )
+            WildexMenuButton(
+                titleText = "Settings",
+                subtitleText = "Configure",
+                imageVector = Icons.Filled.Settings,
+                onClick = {},
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                style = WildexMenuButtonStyle.Secondary,
+            )
         }
     }
 }

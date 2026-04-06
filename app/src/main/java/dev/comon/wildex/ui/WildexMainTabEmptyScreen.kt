@@ -41,7 +41,7 @@ fun WildexMainTabEmptyScreen(
                 .fillMaxWidth()
                 .border(
                     width = WildexDimens.borderStrokeChunky,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = WildexTheme.extraColors.cartridgeOutline,
                     shape = RectangleShape,
                 )
                 .background(

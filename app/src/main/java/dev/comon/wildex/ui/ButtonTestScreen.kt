@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.comon.wildex.component.WildexMenuButton
-import dev.comon.wildex.ui.theme.WildexPalette
+import dev.comon.wildex.component.WildexMenuButtonStyle
 import dev.comon.wildex.ui.theme.WildexTheme
 import kotlinx.coroutines.launch
 
@@ -70,13 +70,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                backgroundColor = WildexPalette.Primary,
-                iconBackgroundColor = WildexPalette.SurfaceContainerLowest,
-                iconTintColor = WildexPalette.Primary,
-                titleTextColor = WildexPalette.OnPrimary,
-                subtitleTextColor = WildexPalette.OnPrimary.copy(alpha = 0.92f),
-                frameColor = WildexPalette.OnSurface,
-                shadowBlockColor = WildexPalette.OnSurface,
+                style = WildexMenuButtonStyle.Primary,
             )
             Row(
                 modifier = Modifier
@@ -96,13 +90,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    backgroundColor = WildexPalette.SurfaceContainerLowest,
-                    iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                    iconTintColor = WildexPalette.OnSurface,
-                    titleTextColor = WildexPalette.OnSurface,
-                    subtitleTextColor = WildexPalette.SecondaryMuted,
-                    frameColor = WildexPalette.OnSurface,
-                    shadowBlockColor = WildexPalette.OnSurface,
+                    style = WildexMenuButtonStyle.Secondary,
                 )
                 WildexMenuButton(
                     titleText = "Settings",
@@ -116,13 +104,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    backgroundColor = WildexPalette.SurfaceContainerLowest,
-                    iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                    iconTintColor = WildexPalette.OnSurface,
-                    titleTextColor = WildexPalette.OnSurface,
-                    subtitleTextColor = WildexPalette.SecondaryMuted,
-                    frameColor = WildexPalette.OnSurface,
-                    shadowBlockColor = WildexPalette.OnSurface,
+                    style = WildexMenuButtonStyle.Secondary,
                 )
             }
         }

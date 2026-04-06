@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import dev.comon.wildex.R
 import dev.comon.wildex.component.WildexLogoutConfirmDialog
 import dev.comon.wildex.component.WildexMenuButton
+import dev.comon.wildex.component.WildexMenuButtonStyle
 import dev.comon.wildex.navigation.WildexCaptureTabRoute
 import dev.comon.wildex.navigation.WildexJournalTabRoute
 import dev.comon.wildex.navigation.WildexMainBottomTabRoute
@@ -70,8 +71,8 @@ import dev.comon.wildex.navigation.WildexSearchTabRoute
 import dev.comon.wildex.navigation.WildexSettingsTabRoute
 import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
 import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
+import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
-import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
 import java.util.Locale
 
@@ -147,7 +148,7 @@ fun MainMenuScreen(
                                     .fillMaxWidth(0.92f)
                                     .border(
                                         width = WildexDimens.borderStrokeChunky,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = WildexTheme.extraColors.cartridgeOutline,
                                         shape = RectangleShape,
                                     )
                                     .background(
@@ -194,7 +195,7 @@ fun MainMenuScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(WildexDimens.borderStrokeChunky)
-                        .background(MaterialTheme.colorScheme.onSurface),
+                        .background(WildexTheme.extraColors.cartridgeOutline),
                 )
             }
         },
@@ -252,10 +253,7 @@ fun MainMenuScreen(
                 )
             }
             composable<WildexSettingsTabRoute> {
-                WildexMainTabEmptyScreen(
-                    title = WildexSettingsTabRoute.mainMenuTabLabel(),
-                    bodyText = "설정 화면입니다. 콘텐츠는 추후 연결됩니다.",
-                )
+                SettingsScreen()
             }
         }
     }
@@ -282,13 +280,7 @@ private fun MainMenuHomeContent(
             imageVector = Icons.Filled.CameraAlt,
             onClick = onCaptureClick,
             modifier = Modifier.fillMaxWidth(),
-            backgroundColor = WildexPalette.Primary,
-            iconBackgroundColor = WildexPalette.SurfaceContainerLowest,
-            iconTintColor = WildexPalette.Primary,
-            titleTextColor = WildexPalette.OnPrimary,
-            subtitleTextColor = WildexPalette.OnPrimary.copy(alpha = 0.92f),
-            frameColor = WildexPalette.OnSurface,
-            shadowBlockColor = WildexPalette.OnSurface,
+            style = WildexMenuButtonStyle.Primary,
         )
         Row(
             modifier = Modifier
@@ -304,13 +296,7 @@ private fun MainMenuHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                backgroundColor = WildexPalette.SurfaceContainerLowest,
-                iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                iconTintColor = WildexPalette.OnSurface,
-                titleTextColor = WildexPalette.OnSurface,
-                subtitleTextColor = WildexPalette.SecondaryMuted,
-                frameColor = WildexPalette.OnSurface,
-                shadowBlockColor = WildexPalette.OnSurface,
+                style = WildexMenuButtonStyle.Secondary,
             )
             WildexMenuButton(
                 titleText = "Settings",
@@ -320,13 +306,7 @@ private fun MainMenuHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                backgroundColor = WildexPalette.SurfaceContainerLowest,
-                iconBackgroundColor = WildexPalette.SurfaceContainerHighest,
-                iconTintColor = WildexPalette.OnSurface,
-                titleTextColor = WildexPalette.OnSurface,
-                subtitleTextColor = WildexPalette.SecondaryMuted,
-                frameColor = WildexPalette.OnSurface,
-                shadowBlockColor = WildexPalette.OnSurface,
+                style = WildexMenuButtonStyle.Secondary,
             )
         }
         Spacer(modifier = Modifier.weight(1f))
@@ -353,7 +333,7 @@ private fun MainMenuProfileAvatar(
             .clip(CircleShape)
             .border(
                 width = WildexDimens.borderStrokeChunky,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = WildexTheme.extraColors.cartridgeOutline,
                 shape = CircleShape,
             )
             .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
@@ -381,22 +361,22 @@ private fun MainMenuSectionLabel() {
             modifier = Modifier
                 .matchParentSize()
                 .offset(depth, depth)
-                .background(WildexPalette.OnSurface, RectangleShape),
+                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
         )
         Box(
             modifier = Modifier
                 .border(
                     width = WildexDimens.borderStrokeChunky,
-                    color = WildexPalette.OnSurface,
+                    color = WildexTheme.extraColors.cartridgeOutline,
                     shape = RectangleShape,
                 )
-                .background(WildexPalette.Primary, RectangleShape)
+                .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
                 .padding(horizontal = 20.dp, vertical = 10.dp),
         ) {
             Text(
                 text = "MAIN MENU",
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = WildexPalette.OnPrimary,
+                color = WildexColorRoles.missionCtaForeground(),
             )
         }
     }
@@ -455,11 +435,11 @@ private fun MainMenuBottomBarTabCell(
     val shadowOffset = if (visuallyPressed) depthPressed else depthNormal
     val contentInset = if (visuallyPressed) depthNormal - depthPressed else 0.dp
     val faceColor =
-        if (selected) WildexPalette.Primary else MaterialTheme.colorScheme.surfaceContainerLowest
+        if (selected) WildexColorRoles.missionCtaBackground() else MaterialTheme.colorScheme.surfaceContainerLowest
     val contentColor =
-        if (selected) WildexPalette.OnPrimary else MaterialTheme.colorScheme.onSurface
-    val frameColor = WildexPalette.OnSurface
-    val shadowColor = WildexPalette.OnSurface
+        if (selected) WildexColorRoles.missionCtaForeground() else MaterialTheme.colorScheme.onSurface
+    val frameColor = WildexTheme.extraColors.cartridgeOutline
+    val shadowColor = WildexTheme.extraColors.cartridgeHardShadow
 
     Box(modifier = modifier) {
         Box(

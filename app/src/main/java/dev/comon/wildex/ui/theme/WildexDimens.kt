@@ -4,13 +4,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * DESIGN.md: 4px 픽셀 스트로크, 하드 오프셋 섀도우, 블록 그리드.
+ * DESIGN.md: 구조선·하드 오프셋, 16px 기술 그리드(§7).
  */
 object WildexDimens {
-    /** 보더·디바이더에 사용하는 두께 (1dp 라인 금지) */
+    /** UI 정렬용 메이저 그리드 (DESIGN.md 16px) */
+    val gridMajor: Dp = 16.dp
+
+    /** 보더·디바이더에 사용하는 두께 (1dp 라인 금지; §3은 2–4px 프레임) */
     val borderStrokeChunky: Dp = 4.dp
 
-    /** "Hard Offset" 섀도우/비벨 시뮬레이션 시 이동량 */
+    /** "Hard Offset" / 스프라이트 레이어링 — DESIGN.md §5 (4px·8px) */
     val shadowOffsetHard: Dp = 4.dp
 
     val gridStep: Dp = 4.dp
