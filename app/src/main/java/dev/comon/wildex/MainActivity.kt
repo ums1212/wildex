@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
                 LocalThemePreferencesRepository provides themePreferencesRepository,
             ) {
                 WildexTheme(darkTheme = useDarkTheme) {
-                    WildexRoot()
+                    WildexRoot(isDarkTheme = useDarkTheme)
                 }
             }
         }
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WildexRoot() {
+private fun WildexRoot(isDarkTheme: Boolean) {
     var route by rememberSaveable { mutableStateOf(RouteTitle) }
     var isLoggedIn by rememberSaveable { mutableStateOf(true) }
 
@@ -61,6 +61,8 @@ private fun WildexRoot() {
             onLogout = { isLoggedIn = false },
         )
         else -> TitleScreen(
+            userNickname = "TRAINER_L_10",
+            isDarkTheme = isDarkTheme,
             onLoginClick = {
                 isLoggedIn = true
                 route = RouteMainMenu
@@ -73,6 +75,6 @@ private fun WildexRoot() {
 @Composable
 private fun MainActivityPreview() {
     WildexTheme {
-        WildexRoot()
+        WildexRoot(isDarkTheme = false)
     }
 }

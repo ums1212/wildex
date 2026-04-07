@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import android.content.res.Configuration
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -199,6 +201,71 @@ fun WildexMenuButton(
             )
         },
     )
+}
+
+/**
+ * [WildexMenuButton]과 같은 하드 섀도·눌림 시 면 인셋(interactionSource + [collectIsPressedAsState]).
+ * 로그인·가이드 등 텍스트/아이콘 단일 줄 액션용.
+ */
+@Composable
+fun WildexCartridgePressButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    frameColor: Color = WildexTheme.extraColors.cartridgeOutline,
+    shadowBlockColor: Color = WildexTheme.extraColors.cartridgeHardShadow,
+    horizontalPadding: Dp = WildexDimens.gridMajor,
+    verticalPadding: Dp = WildexDimens.gridStep * 3,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depthNormal = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depthNormal
+    val contentInset = if (pressed) depthNormal - depthPressed else 0.dp
+    val shape = RectangleShape
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(end = depthNormal, bottom = depthNormal),
+    ) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(shadowOffset, shadowOffset)
+                    .background(shadowBlockColor, shape),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (pressed) {
+                            Modifier.offset(contentInset, contentInset)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .clip(shape)
+                    .border(WildexDimens.borderStrokeChunky, frameColor, shape)
+                    .background(backgroundColor, shape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        enabled = enabled,
+                        role = Role.Button,
+                        onClick = onClick,
+                    )
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                content = content,
+            )
+        }
+    }
 }
 
 @Composable
