@@ -113,7 +113,12 @@ fun WildexRoot(isDarkTheme: Boolean) {
                             popUpTo(WildexMainShellRoute) { inclusive = true }
                         }
                     },
-                    onLogout = { isLoggedIn = false },
+                    onLogout = {
+                        isLoggedIn = false
+                        navController.navigate(WildexTitleRoute) {
+                            popUpTo(WildexMainShellRoute) { inclusive = true }
+                        }
+                    },
                 )
             }
         }

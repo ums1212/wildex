@@ -1,5 +1,6 @@
 package dev.comon.wildex.screen
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -236,19 +237,31 @@ fun MainMenuScreen(
                     ),
                 )
             } ?: Modifier
-            Box(modifier = bottomBarAnimModifier) {
-                MainMenuBottomBar(
-                    tabs = mainMenuBottomTabUiRows,
-                    selectedTab = selectedBottomTab,
-                    onTabClick = { tab ->
-                        val destination = navBackStackEntry?.destination
-                        if (destination.wildexSelectedMainBottomTab() == tab) {
-                            navController.popBackStack(WildexMainMenuRoute, inclusive = false)
-                        } else {
-                            navController.navigateToWildexMainBottomTab(tab)
-                        }
-                    },
-                )
+            AnimatedVisibility(
+                visible = selectedBottomTab != null,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                ),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                ),
+            ) {
+                Box(modifier = bottomBarAnimModifier) {
+                    MainMenuBottomBar(
+                        tabs = mainMenuBottomTabUiRows,
+                        selectedTab = selectedBottomTab,
+                        onTabClick = { tab ->
+                            val destination = navBackStackEntry?.destination
+                            if (destination.wildexSelectedMainBottomTab() == tab) {
+                                navController.popBackStack(WildexMainMenuRoute, inclusive = false)
+                            } else {
+                                navController.navigateToWildexMainBottomTab(tab)
+                            }
+                        },
+                    )
+                }
             }
         },
     ) { innerPadding ->
