@@ -1,5 +1,16 @@
 package dev.comon.wildex.screen
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -103,6 +114,7 @@ fun MainMenuScreen(
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     /** 미리보기·테스트에서 다이얼로그를 처음부터 열 때만 true. 앱에서는 기본 false. */
     initialLogoutDialogOpen: Boolean = false,
 ) {
@@ -124,8 +136,20 @@ fun MainMenuScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
+            val topBarAnimModifier = animatedVisibilityScope?.run {
+                Modifier.animateEnterExit(
+                    enter = slideInVertically(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                        initialOffsetY = { -it },
+                    ),
+                    exit = slideOutVertically(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                        targetOffsetY = { -it },
+                    ),
+                )
+            } ?: Modifier
             Column(
-                modifier = Modifier
+                modifier = topBarAnimModifier
                     .fillMaxWidth()
                     .statusBarsPadding(),
             ) {
@@ -200,28 +224,73 @@ fun MainMenuScreen(
             }
         },
         bottomBar = {
-            MainMenuBottomBar(
-                tabs = mainMenuBottomTabUiRows,
-                selectedTab = selectedBottomTab,
-                onTabClick = { tab ->
-                    val destination = navBackStackEntry?.destination
-                    if (destination.wildexSelectedMainBottomTab() == tab) {
-                        navController.popBackStack(WildexMainMenuRoute, inclusive = false)
-                    } else {
-                        navController.navigateToWildexMainBottomTab(tab)
-                    }
-                },
-            )
+            val bottomBarAnimModifier = animatedVisibilityScope?.run {
+                Modifier.animateEnterExit(
+                    enter = slideInVertically(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it },
+                    ),
+                    exit = slideOutVertically(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                        targetOffsetY = { it },
+                    ),
+                )
+            } ?: Modifier
+            Box(modifier = bottomBarAnimModifier) {
+                MainMenuBottomBar(
+                    tabs = mainMenuBottomTabUiRows,
+                    selectedTab = selectedBottomTab,
+                    onTabClick = { tab ->
+                        val destination = navBackStackEntry?.destination
+                        if (destination.wildexSelectedMainBottomTab() == tab) {
+                            navController.popBackStack(WildexMainMenuRoute, inclusive = false)
+                        } else {
+                            navController.navigateToWildexMainBottomTab(tab)
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
+        val contentAnimModifier = animatedVisibilityScope?.run {
+            Modifier.animateEnterExit(
+                enter = fadeIn(tween(1000, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(1000, easing = FastOutSlowInEasing)),
+            )
+        } ?: Modifier
         NavHost(
             navController = navController,
             startDestination = WildexMainMenuRoute,
-            modifier = Modifier
+            modifier = contentAnimModifier
                 .padding(innerPadding)
                 .fillMaxSize(),
         ) {
-            composable<WildexMainMenuRoute> {
+            composable<WildexMainMenuRoute>(
+                enterTransition = {
+                    scaleIn(
+                        initialScale = 0f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                },
+                exitTransition = {
+                    scaleOut(
+                        targetScale = 0f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
+                },
+                popEnterTransition = {
+                    scaleIn(
+                        initialScale = 0f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                },
+                popExitTransition = {
+                    scaleOut(
+                        targetScale = 0f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
+                },
+            ) {
                 MainMenuHomeContent(
                     onCaptureClick = {
                         navController.navigateToWildexMainBottomTab(WildexCaptureTabRoute)
@@ -234,22 +303,122 @@ fun MainMenuScreen(
                     },
                 )
             }
-            composable<WildexJournalTabRoute> {
+            composable<WildexJournalTabRoute>(
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
                 WildexMainTabEmptyScreen(
                     title = WildexJournalTabRoute.mainMenuTabLabel(),
                     bodyText = "일지 화면입니다. 콘텐츠는 추후 연결됩니다.",
                 )
             }
-            composable<WildexCaptureTabRoute> {
+            composable<WildexCaptureTabRoute>(
+                enterTransition = {
+                    slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
                 CaptureScreen()
             }
-            composable<WildexSearchTabRoute> {
+            composable<WildexSearchTabRoute>(
+                enterTransition = {
+                    slideInVertically(
+                        initialOffsetY = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutVertically(
+                        targetOffsetY = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInVertically(
+                        initialOffsetY = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutVertically(
+                        targetOffsetY = { -it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
                 WildexMainTabEmptyScreen(
                     title = WildexSearchTabRoute.mainMenuTabLabel(),
                     bodyText = "검색 화면입니다. 콘텐츠는 추후 연결됩니다.",
                 )
             }
-            composable<WildexSettingsTabRoute> {
+            composable<WildexSettingsTabRoute>(
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
                 SettingsScreen()
             }
         }
