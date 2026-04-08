@@ -1,13 +1,12 @@
 package dev.comon.wildex.ui
 
-import android.net.Uri
+import android.content.res.Configuration
+import androidx.annotation.OptIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,10 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,17 +69,15 @@ import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
 import dev.comon.wildex.ui.theme.WildexPalette
 import androidx.core.net.toUri
+import androidx.media3.common.util.UnstableApi
+import dev.comon.wildex.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.comon.wildex.component.WildexCartridgePressButton
 import dev.comon.wildex.ui.theme.WildexColorRoles
 
-/** 타이틀 배경용 `res/raw/{이름}.webm` 베이스 이름(`R.raw` 대신 getIdentifier 사용). */
-private const val TitleWebmRawName = "title_9_16"
-private const val TitleWebmDarkRawName = "title_dark_9_16"
-
 /**
- * 로그인 전 타이틀 화면. 테마에 따라 `res/raw/title_9_16.webm` 또는
+ * 로그인 전 타이틀 화면. 다크테마 여부에 따라 `res/raw/title_9_16.webm` 또는
  * `res/raw/title_dark_9_16.webm` 웹엠 루프를 재생합니다.
  *
  * @param onLoginClick 로그인·시작(중앙 패널 터치).
@@ -85,73 +85,66 @@ private const val TitleWebmDarkRawName = "title_dark_9_16"
  */
 @Composable
 fun TitleScreen(
+    isDarkTheme: Boolean,
     onLoginClick: () -> Unit,
-    onGuideClick: () -> Unit = {},
+    onGuideClick: () -> Unit,
     modifier: Modifier = Modifier,
     userNickname: String = "TRAINER_L_10",
-    isDarkTheme: Boolean = false,
 ) {
     val inspection = LocalInspectionMode.current
-    val titleVideoRawName = if (isDarkTheme) TitleWebmDarkRawName else TitleWebmRawName
+
     Box(modifier = modifier.fillMaxSize()) {
-        if (inspection) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-            )
-        } else {
+        if(!inspection){
             TitleLoopingWebmBackground(
-                rawName = titleVideoRawName,
+                isDarkTheme = isDarkTheme,
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        BoxWithConstraints(
-            Modifier
+        TitleScreenScrollableLayout(
+            modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding(),
-        ) {
-            TitleScreenScrollableLayout(
-                containerMaxWidth = maxWidth,
-                containerMaxHeight = maxHeight,
-                isDarkTheme = isDarkTheme,
-                userNickname = userNickname,
-                onLoginClick = onLoginClick,
-                onGuideClick = onGuideClick,
-            )
-        }
+            isDarkTheme = isDarkTheme,
+            userNickname = userNickname,
+            onLoginClick = onLoginClick,
+            onGuideClick = onGuideClick,
+        )
     }
 }
 
 @Composable
 private fun TitleScreenScrollableLayout(
-    containerMaxWidth: Dp,
-    containerMaxHeight: Dp,
     isDarkTheme: Boolean,
     userNickname: String,
     onLoginClick: () -> Unit,
     onGuideClick: () -> Unit,
+    modifier: Modifier = Modifier, // modifier 추가
 ) {
-    val landscape = containerMaxWidth > containerMaxHeight
+    // 현재 기기의 화면 구성 정보를 가져옵/니다.
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     val scroll = rememberScrollState()
     val panelShadow = WildexDimens.gridStep * 2
     val contentPad = WildexDimens.gridMajor
 
-    val titleStyle =
-        if (landscape && containerMaxHeight < 420.dp) {
-            MaterialTheme.typography.displaySmall
-        } else {
-            MaterialTheme.typography.displayMedium
-        }
+    // 1. 타이틀 스타일 결정 (기존 로직 유지)
+    val titleStyle = if (isLandscape && screenHeight < 420.dp) {
+        MaterialTheme.typography.displayMedium
+    } else {
+        MaterialTheme.typography.displayLarge
+    }
 
-    val underlineWidth =
-        if (landscape) {
-            containerMaxWidth.coerceAtMost(280.dp)
-        } else {
-            containerMaxWidth.coerceAtMost(320.dp)
-        }
+    // 2. 밑줄 너비 결정
+    val underlineWidth = if (isLandscape) {
+        screenWidth.coerceAtMost(280.dp)
+    } else {
+        screenWidth.coerceAtMost(320.dp)
+    }
 
     @Composable
     fun TitleBlock(modifier: Modifier = Modifier) {
@@ -177,32 +170,30 @@ private fun TitleScreenScrollableLayout(
             TitleCentralPanel(
                 shadowOffset = panelShadow,
                 onLoginClick = onLoginClick,
-                landscapeCompact = landscape && containerMaxHeight < 480.dp,
+                landscapeCompact = isLandscape && screenHeight < 480.dp,
             )
             GuideBar(onClick = onGuideClick)
         }
     }
 
-    if (landscape) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-        ) {
+    // 레이아웃 구성
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scroll),
+    ) {
+        if (isLandscape) {
+            // 가로 모드 레이아웃
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = containerMaxHeight)
+                    .heightIn(min = screenHeight) // 전체 높이를 확보하여 중앙 정렬 유지
                     .padding(horizontal = contentPad, vertical = WildexDimens.gridStep * 2),
-                horizontalArrangement = Arrangement.spacedBy(
-                    contentPad,
-                    Alignment.CenterHorizontally,
-                ),
+                horizontalArrangement = Arrangement.spacedBy(contentPad, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     modifier = Modifier.weight(1f, fill = false),
-                    verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     TrainerBadge(
@@ -214,29 +205,20 @@ private fun TitleScreenScrollableLayout(
                 }
                 Column(
                     modifier = Modifier.weight(1f, fill = false),
-                    verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     CentralAndGuide(modifier = Modifier.fillMaxWidth())
                 }
             }
-        }
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll),
-        ) {
+        } else {
+            // 세로 모드 레이아웃
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = containerMaxHeight)
+                    .heightIn(min = screenHeight)
                     .padding(contentPad),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(
-                    contentPad,
-                    Alignment.CenterVertically,
-                ),
+                verticalArrangement = Arrangement.spacedBy(contentPad, Alignment.CenterVertically),
             ) {
                 TrainerBadge(
                     userNickname = userNickname,
@@ -249,24 +231,32 @@ private fun TitleScreenScrollableLayout(
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun TitleLoopingWebmBackground(
-    rawName: String,
+    isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val player = remember(context, rawName) {
+    val titleVideoRawInt = if (isDarkTheme) R.raw.title_dark_9_16 else R.raw.title_9_16
+    var isVideoReady by remember { mutableStateOf(false) }
+
+    val player = remember(context, titleVideoRawInt) {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ALL
+
+            addListener(object: Player.Listener{
+                override fun onRenderedFirstFrame() {
+                    super.onRenderedFirstFrame()
+                    isVideoReady = true
+                }
+            })
         }
     }
-    DisposableEffect(lifecycleOwner, player, rawName) {
-        val rawId = context.resources.getIdentifier(rawName, "raw", context.packageName)
-        require(rawId != 0) {
-            "res/raw/${rawName}.webm 이 없습니다. 파일명·폴더를 확인하세요."
-        }
-        val uri = "android.resource://${context.packageName}/$rawId".toUri()
+
+    DisposableEffect(lifecycleOwner, player, titleVideoRawInt) {
+        val uri = "android.resource://${context.packageName}/$titleVideoRawInt".toUri()
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
         player.playWhenReady = true
@@ -286,18 +276,31 @@ private fun TitleLoopingWebmBackground(
             player.release()
         }
     }
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                useController = false
-                setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                this.player = player
-            }
-        },
-        update = { it.player = player },
-        modifier = modifier,
-    )
+
+    Box {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    this.player = player
+                }
+            },
+            update = { it.player = player },
+            modifier = modifier,
+        )
+        if(!isVideoReady){
+            val staticBackground = if(isDarkTheme) R.drawable.title_background_dark else R.drawable.title_background
+            Image(
+                painter = painterResource(staticBackground),
+                contentDescription = "background image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds // RESIZE_MODE_ZOOM과 맞춤
+            )
+        }
+    }
+
 }
 
 @Composable
@@ -572,6 +575,7 @@ private fun PageDots() {
 private fun GuideBar(onClick: () -> Unit) {
     WildexCartridgePressButton(
         onClick = onClick,
+        modifier = Modifier.fillMaxWidth(0.92f),
         backgroundColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         frameColor = WildexTheme.extraColors.cartridgeOutline,
         shadowBlockColor = WildexTheme.extraColors.shadowMass,
@@ -596,7 +600,7 @@ private fun GuideBar(onClick: () -> Unit) {
 @Composable
 private fun TitleScreenPreviewPortrait() {
     WildexTheme {
-        TitleScreen(onLoginClick = { })
+        TitleScreen(onLoginClick = { }, onGuideClick = { }, isDarkTheme = false)
     }
 }
 
@@ -604,6 +608,6 @@ private fun TitleScreenPreviewPortrait() {
 @Composable
 private fun TitleScreenPreviewLandscape() {
     WildexTheme {
-        TitleScreen(onLoginClick = { })
+        TitleScreen(onLoginClick = { }, onGuideClick = { }, isDarkTheme = false)
     }
 }

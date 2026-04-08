@@ -227,44 +227,42 @@ fun WildexCartridgePressButton(
     val contentInset = if (pressed) depthNormal - depthPressed else 0.dp
     val shape = RectangleShape
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(end = depthNormal, bottom = depthNormal),
+            .padding(end = depthNormal, bottom = depthNormal)
     ) {
-        Box {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .offset(shadowOffset, shadowOffset)
-                    .background(shadowBlockColor, shape),
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (pressed) {
-                            Modifier.offset(contentInset, contentInset)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .clip(shape)
-                    .border(WildexDimens.borderStrokeChunky, frameColor, shape)
-                    .background(backgroundColor, shape)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        enabled = enabled,
-                        role = Role.Button,
-                        onClick = onClick,
-                    )
-                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                content = content,
-            )
-        }
+        // 2. 그림자 영역 (Row의 크기에 맞춰짐)
+        Box(
+            modifier = Modifier
+                .matchParentSize() // 이제 Row가 크기를 결정하면 그에 맞춰집니다.
+                .offset(shadowOffset, shadowOffset)
+                .background(shadowBlockColor, shape)
+        )
+
+        // 3. 메인 콘텐츠 영역
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (pressed) Modifier.offset(contentInset, contentInset)
+                    else Modifier
+                )
+                .background(backgroundColor, shape)
+                .border(WildexDimens.borderStrokeChunky, frameColor, shape)
+                .clip(shape) // 테두리 안쪽으로 클릭 효과 등을 제한
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick
+                )
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
     }
 }
 
