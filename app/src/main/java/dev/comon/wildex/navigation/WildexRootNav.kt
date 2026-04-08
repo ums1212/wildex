@@ -18,12 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import dev.comon.wildex.screen.GuideScreen
 import dev.comon.wildex.screen.MainMenuScreen
+import dev.comon.wildex.screen.SplashScreen
 import dev.comon.wildex.screen.TitleScreen
 import kotlinx.serialization.Serializable
 
 // ── 루트 네비게이션 라우트 ────────────────────────────────────────────
+@Serializable
+data object WildexSplashRoute
+
 @Serializable
 data object WildexTitleRoute
 
@@ -45,14 +50,29 @@ fun WildexRoot(isDarkTheme: Boolean) {
     ) {
         NavHost(
             navController = navController,
-            startDestination = WildexTitleRoute,
+            startDestination = WildexSplashRoute,
         ) {
+            composable<WildexSplashRoute>(
+                exitTransition = { fadeOut(tween(300, easing = FastOutSlowInEasing)) },
+            ) {
+                SplashScreen(
+                    onFinished = {
+                        navController.navigate(WildexTitleRoute) {
+                            popUpTo(WildexSplashRoute) { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable<WildexTitleRoute>(
                 enterTransition = {
-                    scaleIn(
-                        initialScale = 0f,
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                    if (initialState.destination.hasRoute(WildexSplashRoute::class)) {
+                        fadeIn(tween(300, easing = FastOutSlowInEasing))
+                    } else {
+                        scaleIn(
+                            initialScale = 0f,
+                            animationSpec = tween(500, easing = FastOutSlowInEasing),
+                        ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                    }
                 },
                 exitTransition = {
                     scaleOut(
