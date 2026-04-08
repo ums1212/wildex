@@ -1,4 +1,4 @@
-package dev.comon.wildex.ui
+package dev.comon.wildex.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,14 +28,12 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +69,8 @@ import dev.comon.wildex.navigation.WildexSearchTabRoute
 import dev.comon.wildex.navigation.WildexSettingsTabRoute
 import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
 import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
+import dev.comon.wildex.ui.WildexMainTabEmptyScreen
+import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme

@@ -1,4 +1,4 @@
-package dev.comon.wildex.ui.capture
+package dev.comon.wildex.capture
 
 /** Capture 화면 MVI 계약: UI 상태는 StateFlow, 일회성 피드백은 Channel(→ Flow)로 전달합니다. */
 data class CaptureUiState(

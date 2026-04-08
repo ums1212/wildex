@@ -1,4 +1,4 @@
-package dev.comon.wildex.ui.capture
+package dev.comon.wildex.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

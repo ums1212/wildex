@@ -1,4 +1,4 @@
-package dev.comon.wildex.ui
+package dev.comon.wildex.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

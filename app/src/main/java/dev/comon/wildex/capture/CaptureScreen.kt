@@ -1,7 +1,8 @@
-package dev.comon.wildex.ui
+package dev.comon.wildex.capture
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,6 +11,7 @@ import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -54,6 +56,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -66,9 +69,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.comon.wildex.ui.capture.CaptureIntent
-import dev.comon.wildex.ui.capture.CaptureUiEvent
-import dev.comon.wildex.ui.capture.CaptureViewModel
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -112,7 +112,7 @@ fun CaptureScreen(
     LaunchedEffect(Unit) {
         val granted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
+                PackageManager.PERMISSION_GRANTED
         viewModel.onIntent(CaptureIntent.PermissionResult(granted))
     }
 
@@ -123,7 +123,7 @@ fun CaptureScreen(
                     imageCapture.takePicture(
                         ContextCompat.getMainExecutor(context),
                         object : ImageCapture.OnImageCapturedCallback() {
-                            override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
+                            override fun onCaptureSuccess(image: ImageProxy) {
                                 image.close()
                                 viewModel.onIntent(CaptureIntent.CaptureSucceeded)
                             }
@@ -434,9 +434,9 @@ private fun CaptureControlPanel(
 
 @Composable
 private fun CaptureDpad(
-    dpadFace: androidx.compose.ui.graphics.Color,
-    outline: androidx.compose.ui.graphics.Color,
-    onFace: androidx.compose.ui.graphics.Color,
+    dpadFace: Color,
+    outline: Color,
+    onFace: Color,
     flashOn: Boolean,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,

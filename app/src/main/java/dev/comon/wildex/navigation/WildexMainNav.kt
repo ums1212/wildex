@@ -6,6 +6,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavOptionsBuilder
 import kotlinx.serialization.Serializable
 
+// ── MainMenuScreen 내부 NavHost 라우트 ────────────────────────────────
 @Serializable
 data object WildexMainMenuRoute
 

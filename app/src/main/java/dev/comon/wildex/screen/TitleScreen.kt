@@ -1,4 +1,4 @@
-package dev.comon.wildex.ui
+package dev.comon.wildex.screen
 
 import android.content.res.Configuration
 import androidx.annotation.OptIn
@@ -41,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -483,7 +484,7 @@ private fun TitleCentralPanel(
 
 @Composable
 private fun PanelBrackets(
-    color: androidx.compose.ui.graphics.Color,
+    color: Color,
     stroke: Dp,
     inset: Dp,
     modifier: Modifier = Modifier,
