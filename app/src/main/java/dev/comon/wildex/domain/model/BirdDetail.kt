@@ -1,5 +1,8 @@
 package dev.comon.wildex.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class BirdDetail(
     val speciesId: String,
     val specimenNo: String,

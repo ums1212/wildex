@@ -3,6 +3,7 @@ package dev.comon.wildex.screen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,18 +24,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
@@ -47,7 +53,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,10 +67,17 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +99,7 @@ import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
 import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
 import dev.comon.wildex.ui.WildexMainTabEmptyScreen
 import dev.comon.wildex.capture.CaptureScreen
+import dev.comon.wildex.journal.JournalScreen
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -126,6 +143,40 @@ fun MainMenuScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
 
+    // Journal 탭 내부 하위 화면(BirdList/BirdInfo)의 뒤로가기 상태
+    var journalCanNavigateBack by remember { mutableStateOf(false) }
+    var journalOnBack: () -> Unit by remember { mutableStateOf({}) }
+    var journalScreenTitle: String? by remember { mutableStateOf(null) }
+
+    // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
+    var barsVisible by remember { mutableStateOf(true) }
+    var topBarHeightPx by remember { mutableIntStateOf(0) }
+    var bottomBarHeightPx by remember { mutableIntStateOf(0) }
+    val topBarTranslation by animateFloatAsState(
+        targetValue = if (barsVisible) 0f else -topBarHeightPx.toFloat(),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+    )
+    val bottomBarTranslation by animateFloatAsState(
+        targetValue = if (barsVisible) 0f else bottomBarHeightPx.toFloat(),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+    )
+
+    LaunchedEffect(journalCanNavigateBack) {
+        if (!journalCanNavigateBack) barsVisible = true
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (journalCanNavigateBack) {
+                    if (available.y < -3f) barsVisible = false
+                    else if (available.y > 3f) barsVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     if (showLogoutDialog) {
         WildexLogoutConfirmDialog(
             onDismiss = { showLogoutDialog = false },
@@ -134,7 +185,7 @@ fun MainMenuScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().nestedScroll(nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             val topBarAnimModifier = animatedVisibilityScope?.run {
@@ -152,8 +203,11 @@ fun MainMenuScreen(
             Column(
                 modifier = topBarAnimModifier
                     .fillMaxWidth()
-                    .statusBarsPadding(),
+                    .statusBarsPadding()
+                    .onGloballyPositioned { topBarHeightPx = it.size.height }
+                    .graphicsLayer { translationY = topBarTranslation },
             ) {
+                val showBackButton = selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,7 +216,11 @@ fun MainMenuScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    MainMenuTopBarDpadIcon()
+                    if (showBackButton) {
+                        MainMenuTopBarBackButton(onClick = journalOnBack)
+                    } else {
+                        MainMenuTopBarDpadIcon()
+                    }
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center,
@@ -248,7 +306,11 @@ fun MainMenuScreen(
                     animationSpec = tween(400, easing = FastOutSlowInEasing),
                 ),
             ) {
-                Box(modifier = bottomBarAnimModifier) {
+                Box(
+                    modifier = bottomBarAnimModifier
+                        .onGloballyPositioned { bottomBarHeightPx = it.size.height }
+                        .graphicsLayer { translationY = bottomBarTranslation },
+                ) {
                     MainMenuBottomBar(
                         tabs = mainMenuBottomTabUiRows,
                         selectedTab = selectedBottomTab,
@@ -264,18 +326,30 @@ fun MainMenuScreen(
                 }
             }
         },
-    ) { innerPadding ->
+    ) { _ ->
         val contentAnimModifier = animatedVisibilityScope?.run {
             Modifier.animateEnterExit(
                 enter = fadeIn(tween(1000, easing = FastOutSlowInEasing)),
                 exit = fadeOut(tween(1000, easing = FastOutSlowInEasing)),
             )
         } ?: Modifier
+        // innerPadding 대신 측정된 px 높이 + 현재 translation으로 직접 계산
+        // → bars 이동과 content padding이 같은 값을 공유해 완전히 동기화
+        val density = LocalDensity.current
+        val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val navBarPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+        val contentTopPadding = with(density) {
+            (topBarHeightPx.toFloat() + topBarTranslation).coerceAtLeast(0f).toDp()
+        } + statusBarPadding
+        val contentBottomPadding = with(density) {
+            (bottomBarHeightPx.toFloat() - bottomBarTranslation).coerceAtLeast(navBarPx).toDp()
+        }
+
         NavHost(
             navController = navController,
             startDestination = WildexMainMenuRoute,
             modifier = contentAnimModifier
-                .padding(innerPadding)
+                .padding(top = contentTopPadding, bottom = contentBottomPadding)
                 .fillMaxSize(),
         ) {
             composable<WildexMainMenuRoute>(
@@ -342,9 +416,12 @@ fun MainMenuScreen(
                     )
                 },
             ) {
-                WildexMainTabEmptyScreen(
-                    title = WildexJournalTabRoute.mainMenuTabLabel(),
-                    bodyText = "일지 화면입니다. 콘텐츠는 추후 연결됩니다.",
+                JournalScreen(
+                    onBackNavigationState = { canNavigateBack, onBack, title ->
+                        journalCanNavigateBack = canNavigateBack
+                        journalOnBack = onBack
+                        journalScreenTitle = title
+                    },
                 )
             }
             composable<WildexCaptureTabRoute>(
@@ -503,6 +580,50 @@ private fun MainMenuTopBarDpadIcon() {
 }
 
 @Composable
+private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depth = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depth
+    val contentInset = if (pressed) depth - depthPressed else 0.dp
+
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(end = depth, bottom = depth),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(shadowOffset, shadowOffset)
+                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .offset(contentInset, contentInset)
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onClick,
+                )
+                .padding(6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "뒤로가기",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun MainMenuProfileAvatar(
     onClick: () -> Unit,
 ) {
@@ -571,6 +692,7 @@ private fun MainMenuBottomBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
             .navigationBarsPadding(),
     ) {
         Row(

@@ -26,6 +26,16 @@ data object WildexSearchTabRoute : WildexMainBottomTabRoute
 @Serializable
 data object WildexSettingsTabRoute : WildexMainBottomTabRoute
 
+// ── Journal 탭 내부 Nested NavHost 라우트 ────────────────────────────
+@Serializable
+data object WildexJournalCategoryRoute
+
+@Serializable
+data object WildexBirdListRoute
+
+@Serializable
+data class WildexBirdInfoRoute(val speciesId: String)
+
 fun NavDestination?.wildexSelectedMainBottomTab(): WildexMainBottomTabRoute? {
     if (this == null) return null
     return when {
@@ -47,7 +57,12 @@ fun NavOptionsBuilder.wildexMainBottomTabNavOptions() {
 
 fun NavController.navigateToWildexMainBottomTab(tab: WildexMainBottomTabRoute) {
     when (tab) {
-        WildexJournalTabRoute -> navigate(WildexJournalTabRoute) { wildexMainBottomTabNavOptions() }
+        // Journal 탭은 state를 저장/복원하지 않아 돌아올 때 카테고리 화면으로 초기화됨
+        WildexJournalTabRoute -> navigate(WildexJournalTabRoute) {
+            popUpTo(WildexMainMenuRoute) { saveState = false }
+            launchSingleTop = true
+            restoreState = false
+        }
         WildexCaptureTabRoute -> navigate(WildexCaptureTabRoute) { wildexMainBottomTabNavOptions() }
         WildexSearchTabRoute -> navigate(WildexSearchTabRoute) { wildexMainBottomTabNavOptions() }
         WildexSettingsTabRoute -> navigate(WildexSettingsTabRoute) { wildexMainBottomTabNavOptions() }
