@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+val localProperties = Properties()
+val localPropertiesFile: File = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.reader())
 }
 
 android {
@@ -20,6 +28,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "WILDEX_API_HOST", "\"${localProperties["WILDEX_API_HOST"] ?: ""}\"")
+        buildConfigField("String", "WILDEX_API_KEY", "\"${localProperties["WILDEX_API_KEY"] ?: ""}\"")
     }
 
     buildTypes {
@@ -37,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -66,7 +78,12 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.compose.material.core)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.logging.interceptor)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
