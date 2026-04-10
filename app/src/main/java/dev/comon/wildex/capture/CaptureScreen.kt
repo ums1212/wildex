@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import android.widget.Toast
+import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraControl
@@ -38,8 +38,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -49,17 +56,19 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,7 +82,7 @@ import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val TagCapture = "WildexCapture"
 
@@ -83,12 +92,19 @@ private const val ViewfinderAspectHeight = 4f
 
 @Composable
 fun CaptureScreen(
+    onNavigateToBirdInfo: (speciesId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CaptureViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 현재 디스플레이 회전값 — ImageCapture targetRotation 설정에 사용
+    val currentView = LocalView.current
+    val displayRotation = currentView.display?.rotation ?: Surface.ROTATION_0
+
     val previewView = remember(context) {
         PreviewView(context).apply {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
@@ -98,8 +114,15 @@ fun CaptureScreen(
     val imageCapture = remember {
         ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setTargetRotation(displayRotation)
             .build()
     }
+
+    // 화면 회전 변경 시 targetRotation 갱신
+    LaunchedEffect(displayRotation) {
+        imageCapture.targetRotation = displayRotation
+    }
+
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -120,12 +143,27 @@ fun CaptureScreen(
         viewModel.events.collect { event ->
             when (event) {
                 CaptureUiEvent.TakePicture -> {
+                    // 카메라가 아직 바인딩되지 않은 상태라면 촬영 불가 — 진행 플래그 리셋
+                    if (cameraControl == null) {
+                        viewModel.onIntent(
+                            CaptureIntent.CaptureFailed(
+                                IllegalStateException("카메라가 준비되지 않았습니다"),
+                            ),
+                        )
+                        return@collect
+                    }
                     imageCapture.takePicture(
                         ContextCompat.getMainExecutor(context),
                         object : ImageCapture.OnImageCapturedCallback() {
                             override fun onCaptureSuccess(image: ImageProxy) {
+                                // JPEG 바이트 및 회전값 추출 후 즉시 ImageProxy 닫기
+                                val buffer = image.planes[0].buffer
+                                val imageBytes = ByteArray(buffer.remaining()).also { buffer.get(it) }
+                                val rotationDegrees = image.imageInfo.rotationDegrees
                                 image.close()
-                                viewModel.onIntent(CaptureIntent.CaptureSucceeded)
+                                viewModel.onIntent(
+                                    CaptureIntent.CaptureSucceeded(imageBytes, rotationDegrees),
+                                )
                             }
 
                             override fun onError(exception: ImageCaptureException) {
@@ -135,8 +173,11 @@ fun CaptureScreen(
                         },
                     )
                 }
-                is CaptureUiEvent.ShowError -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is CaptureUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+                is CaptureUiEvent.NavigateToBirdInfo -> {
+                    onNavigateToBirdInfo(event.speciesId)
                 }
             }
         }
@@ -277,6 +318,48 @@ fun CaptureScreen(
                 .onGloballyPositioned { coords ->
                     controlBarHeightPx = coords.size.height
                 },
+        )
+
+        // 분석 중 로딩 오버레이 — 모든 터치 이벤트 차단
+        if (state.isAnalyzing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
+                ) {
+                    CircularProgressIndicator(
+                        color = WildexPalette.SpecSheetPureRed,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(48.dp),
+                    )
+                    Text(
+                        text = "ANALYZING...",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        color = Color.White,
+                    )
+                }
+            }
+        }
+
+        // Snackbar — 오버레이보다 아래에 배치해 항상 표시
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = controlBarHeight + WildexDimens.gridMajor),
         )
     }
 }
@@ -432,6 +515,8 @@ private fun CaptureControlPanel(
     }
 }
 
+private enum class DpadDirection { Up, Down, Left, Right }
+
 @Composable
 private fun CaptureDpad(
     dpadFace: Color,
@@ -443,17 +528,66 @@ private fun CaptureDpad(
     onFlashOn: () -> Unit,
     onFlashOff: () -> Unit,
 ) {
+    // 각 방향 셀의 InteractionSource를 CaptureDpad가 소유 — 전체 위젯 기울기 계산에 사용
+    val zoomInSource = remember { MutableInteractionSource() }
+    val zoomOutSource = remember { MutableInteractionSource() }
+    val flashOnSource = remember { MutableInteractionSource() }
+    val flashOffSource = remember { MutableInteractionSource() }
+
+    val zoomInPressed by zoomInSource.collectIsPressedAsState()
+    val zoomOutPressed by zoomOutSource.collectIsPressedAsState()
+    val flashOnPressed by flashOnSource.collectIsPressedAsState()
+    val flashOffPressed by flashOffSource.collectIsPressedAsState()
+
+    val pressedDirection = when {
+        zoomInPressed -> DpadDirection.Up
+        zoomOutPressed -> DpadDirection.Down
+        flashOnPressed -> DpadDirection.Left
+        flashOffPressed -> DpadDirection.Right
+        else -> null
+    }
+
+    val tiltAngle = 18f
+    val targetRotX = when (pressedDirection) {
+        DpadDirection.Up -> tiltAngle
+        DpadDirection.Down -> -tiltAngle
+        else -> 0f
+    }
+    val targetRotY = when (pressedDirection) {
+        DpadDirection.Left -> -tiltAngle
+        DpadDirection.Right -> tiltAngle
+        else -> 0f
+    }
+    val rotX by animateFloatAsState(
+        targetValue = targetRotX,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "dpadRotX",
+    )
+    val rotY by animateFloatAsState(
+        targetValue = targetRotY,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "dpadRotY",
+    )
+
     val rowH = 24.dp
     val sep = 2.dp
     val accentOn = WildexPalette.SpecSheetPureRed
+
+    // graphicsLayer를 Column 전체에 적용 — border/background까지 포함해 위젯 전체가 기울어짐
     Column(
         modifier = Modifier
             .width(120.dp)
+            .graphicsLayer {
+                rotationX = rotX
+                rotationY = rotY
+                cameraDistance = 8.dp.toPx()
+            }
             .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
             .background(dpadFace, RectangleShape),
     ) {
         DpadCell(
             onClick = onZoomIn,
+            interactionSource = zoomInSource,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(rowH),
@@ -478,6 +612,7 @@ private fun CaptureDpad(
         ) {
             DpadCell(
                 onClick = onFlashOn,
+                interactionSource = flashOnSource,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
@@ -496,6 +631,7 @@ private fun CaptureDpad(
             )
             DpadCell(
                 onClick = onFlashOff,
+                interactionSource = flashOffSource,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
@@ -516,6 +652,7 @@ private fun CaptureDpad(
         )
         DpadCell(
             onClick = onZoomOut,
+            interactionSource = zoomOutSource,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(rowH),
@@ -532,14 +669,14 @@ private fun CaptureDpad(
 @Composable
 private fun DpadCell(
     onClick: () -> Unit,
+    interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier = modifier
-            .clip(RectangleShape)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             ),
@@ -553,24 +690,35 @@ private fun DpadCell(
 private fun CaptureShutterCluster(
     onCapture: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
     val depth = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depth
+    val contentInset = if (pressed) depth - depthPressed else 0.dp
+
     val ring = WildexTheme.extraColors.cartridgeOutline
     val shadow = WildexTheme.extraColors.cartridgeHardShadow
     val red = WildexPalette.SpecSheetPureRed
     val iconTint = WildexPalette.OnPrimary
     val outer = 44.dp
     val ringInset = WildexDimens.gridStep
+
     Box(modifier = Modifier.padding(end = depth, bottom = depth)) {
+        // 그림자 — pressed 시 offset 축소
         Box(
             modifier = Modifier
                 .size(outer)
-                .offset(depth, depth)
+                .offset(shadowOffset, shadowOffset)
                 .clip(CircleShape)
                 .background(shadow, CircleShape),
         )
+        // 링 + 버튼 페이스 — pressed 시 그림자 방향으로 이동
         Box(
             modifier = Modifier
                 .size(outer)
+                .offset(contentInset, contentInset)
                 .border(WildexDimens.borderStrokeChunky, ring, CircleShape)
                 .padding(ringInset),
             contentAlignment = Alignment.Center,
@@ -581,7 +729,7 @@ private fun CaptureShutterCluster(
                     .clip(CircleShape)
                     .background(red, CircleShape)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = interactionSource,
                         indication = null,
                         onClick = onCapture,
                     ),
@@ -599,17 +747,24 @@ private fun CaptureShutterCluster(
 }
 
 private suspend fun Context.awaitProcessCameraProvider(): ProcessCameraProvider? =
-    suspendCoroutine { continuation ->
+    suspendCancellableCoroutine { continuation ->
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener(
             {
-                try {
-                    continuation.resume(future.get())
-                } catch (e: Exception) {
-                    Log.e(TagCapture, "ProcessCameraProvider", e)
-                    continuation.resume(null)
+                if (continuation.isActive) {
+                    try {
+                        // addListener 콜백 내부에서 호출하므로 Future는 이미 완료 상태 — blocking 없음
+                        continuation.resume(future.get())
+                    } catch (e: Exception) {
+                        Log.e(TagCapture, "ProcessCameraProvider", e)
+                        continuation.resume(null)
+                    }
                 }
+                // continuation이 비활성(취소)이면 결과를 무시 — Future 자체는 취소하지 않음
             },
             ContextCompat.getMainExecutor(this),
         )
+        // ProcessCameraProvider Future는 동일 Context에 대한 싱글턴이므로
+        // 코루틴 취소 시 future.cancel()을 호출하면 이후 getInstance() 호출도 영구적으로 실패함
+        // → invokeOnCancellation에서 Future를 취소하지 않고 결과만 무시
     }

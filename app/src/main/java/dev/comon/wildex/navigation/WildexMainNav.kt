@@ -36,6 +36,10 @@ data object WildexBirdListRoute
 @Serializable
 data class WildexBirdInfoRoute(val speciesId: String)
 
+// ── Capture 탭 분석 결과 화면 ─────────────────────────────────────────
+@Serializable
+data class WildexCaptureResultRoute(val speciesId: String)
+
 fun NavDestination?.wildexSelectedMainBottomTab(): WildexMainBottomTabRoute? {
     if (this == null) return null
     return when {

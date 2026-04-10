@@ -98,8 +98,11 @@ import dev.comon.wildex.navigation.WildexSettingsTabRoute
 import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
 import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
 import dev.comon.wildex.ui.WildexMainTabEmptyScreen
+import androidx.navigation.toRoute
+import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
+import dev.comon.wildex.navigation.WildexCaptureResultRoute
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -450,7 +453,40 @@ fun MainMenuScreen(
                     )
                 },
             ) {
-                CaptureScreen()
+                CaptureScreen(
+                    onNavigateToBirdInfo = { speciesId ->
+                        navController.navigate(WildexCaptureResultRoute(speciesId))
+                    },
+                )
+            }
+            composable<WildexCaptureResultRoute>(
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
+                CaptureResultScreen(speciesId = route.speciesId)
             }
             composable<WildexSearchTabRoute>(
                 enterTransition = {
