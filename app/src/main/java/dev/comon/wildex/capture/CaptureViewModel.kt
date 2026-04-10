@@ -3,6 +3,7 @@ package dev.comon.wildex.capture
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.comon.wildex.data.AnalysisRepository
+import dev.comon.wildex.data.AnalysisResultStore
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -94,9 +95,9 @@ class CaptureViewModel(
                                 }
                                 is AnalysisState.Success -> {
                                     _state.update { it.copy(isAnalyzing = false) }
-                                    _events.send(
-                                        CaptureUiEvent.NavigateToBirdInfo(analysisState.speciesId),
-                                    )
+                                    AnalysisResultStore.save(analysisState.predictions)
+                                    val topId = analysisState.predictions.firstOrNull()?.taxonId?.toString() ?: ""
+                                    _events.send(CaptureUiEvent.NavigateToBirdInfo(topId))
                                 }
                                 is AnalysisState.Error -> {
                                     _state.update { it.copy(isAnalyzing = false) }

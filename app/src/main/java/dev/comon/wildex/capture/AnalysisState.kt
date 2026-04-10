@@ -1,9 +1,11 @@
 package dev.comon.wildex.capture
 
+import dev.comon.wildex.domain.model.BirdPrediction
+
 /** 서버 분석 과정의 단계별 상태 */
 sealed interface AnalysisState {
     data object Analyzing : AnalysisState
-    data class Success(val speciesId: String) : AnalysisState
+    data class Success(val predictions: List<BirdPrediction>) : AnalysisState
     data class Error(val error: AnalysisError) : AnalysisState
 }
 
