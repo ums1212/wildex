@@ -31,6 +31,9 @@ android {
 
         buildConfigField("String", "WILDEX_API_HOST", "\"${localProperties["WILDEX_API_HOST"] ?: ""}\"")
         buildConfigField("String", "WILDEX_API_KEY", "\"${localProperties["WILDEX_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProperties["SUPABASE_URL"] ?: ""}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties["SUPABASE_ANON_KEY"] ?: ""}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperties["GOOGLE_WEB_CLIENT_ID"] ?: ""}\"")
     }
 
     buildTypes {
@@ -81,6 +84,11 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.coil.compose)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.compose.auth)
+    implementation(libs.ktor.client.android)
+    implementation(libs.credentials.play.services)
+    implementation(libs.googleid)
     implementation(libs.okhttp)
     testImplementation(libs.junit)
     implementation(libs.okhttp.logging.interceptor)

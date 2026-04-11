@@ -54,7 +54,7 @@ fun WildexLogoutConfirmDialog(
     titleText: String = "로그아웃?",
     messageText: String = "로그아웃하고 타이틀 화면으로 돌아가시겠습니까?",
     confirmText: String = "로그아웃",
-    dismissText: String = "취소",
+    dismissText: String? = "취소",
 ) {
     BasicAlertDialog(
         onDismissRequest = onDismiss,
@@ -85,7 +85,7 @@ private fun WildexLogoutConfirmDialogCard(
     titleText: String,
     messageText: String,
     confirmText: String,
-    dismissText: String,
+    dismissText: String?,
     modifier: Modifier = Modifier,
 ) {
     val depth = WildexDimens.shadowOffsetHard
@@ -195,12 +195,14 @@ private fun WildexLogoutConfirmDialogCard(
                         containerColor = missionBg,
                         contentColor = missionFg,
                     )
-                    WildexLogoutDialogActionButton(
-                        text = dismissText,
-                        onClick = onDismiss,
-                        containerColor = dismissFill,
-                        contentColor = bodyInk,
-                    )
+                    if (dismissText != null) {
+                        WildexLogoutDialogActionButton(
+                            text = dismissText,
+                            onClick = onDismiss,
+                            containerColor = dismissFill,
+                            contentColor = bodyInk,
+                        )
+                    }
                 }
             }
             Box(

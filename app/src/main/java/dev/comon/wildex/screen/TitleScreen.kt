@@ -5,6 +5,9 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,6 +94,8 @@ fun TitleScreen(
     onGuideClick: () -> Unit,
     modifier: Modifier = Modifier,
     userNickname: String = "TRAINER_L_10",
+    isLoading: Boolean = false,
+    isLoggedIn: Boolean = false,
 ) {
     val inspection = LocalInspectionMode.current
 
@@ -109,9 +114,32 @@ fun TitleScreen(
                 .navigationBarsPadding(),
             isDarkTheme = isDarkTheme,
             userNickname = userNickname,
+            isLoggedIn = isLoggedIn,
             onLoginClick = onLoginClick,
             onGuideClick = onGuideClick,
         )
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent(PointerEventPass.Initial)
+                                    .changes
+                                    .forEach { it.consume() }
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
     }
 }
 
@@ -119,6 +147,7 @@ fun TitleScreen(
 private fun TitleScreenScrollableLayout(
     isDarkTheme: Boolean,
     userNickname: String,
+    isLoggedIn: Boolean,
     onLoginClick: () -> Unit,
     onGuideClick: () -> Unit,
     modifier: Modifier = Modifier, // modifier 추가
@@ -129,7 +158,6 @@ private fun TitleScreenScrollableLayout(
     val screenHeight = configuration.screenHeightDp.dp
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    val scroll = rememberScrollState()
     val panelShadow = WildexDimens.gridStep * 2
     val contentPad = WildexDimens.gridMajor
 
@@ -172,6 +200,7 @@ private fun TitleScreenScrollableLayout(
                 shadowOffset = panelShadow,
                 onLoginClick = onLoginClick,
                 landscapeCompact = isLandscape && screenHeight < 480.dp,
+                isLoggedIn = isLoggedIn,
             )
             GuideBar(onClick = onGuideClick)
         }
@@ -181,7 +210,6 @@ private fun TitleScreenScrollableLayout(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scroll),
     ) {
         if (isLandscape) {
             // 가로 모드 레이아웃
@@ -412,6 +440,7 @@ private fun TitleCentralPanel(
     shadowOffset: Dp,
     onLoginClick: () -> Unit,
     landscapeCompact: Boolean,
+    isLoggedIn: Boolean,
 ) {
     val outline = WildexTheme.extraColors.cartridgeOutline
     val hard = WildexTheme.extraColors.cartridgeHardShadow
@@ -458,6 +487,7 @@ private fun TitleCentralPanel(
             ) {
                 LogInBlock(
                     landscapeCompact = landscapeCompact,
+                    isLoggedIn = isLoggedIn,
                     onLoginClick = onLoginClick,
                 )
                 Column(
@@ -510,6 +540,7 @@ private fun PanelBrackets(
 @Composable
 private fun LogInBlock(
     landscapeCompact: Boolean,
+    isLoggedIn: Boolean,
     onLoginClick: () -> Unit,
 ) {
     var navigating by remember { mutableStateOf(false) }
@@ -527,6 +558,7 @@ private fun LogInBlock(
                 navigating = true
                 delay(120)
                 onLoginClick()
+                navigating = false
             }
         },
         enabled = !navigating,
@@ -535,7 +567,7 @@ private fun LogInBlock(
         shadowBlockColor = WildexTheme.extraColors.cartridgeHardShadow,
     ) {
         Text(
-            text = "LOG IN",
+            text = if (isLoggedIn) "START" else "LOG IN",
             style = style.copy(fontWeight = FontWeight.Bold),
             color = WildexColorRoles.missionCtaForeground(),
             textAlign = TextAlign.Center,
