@@ -25,14 +25,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -78,6 +79,7 @@ import dev.comon.wildex.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.comon.wildex.component.WildexCartridgePressButton
+import dev.comon.wildex.component.WildexLogoutConfirmDialog
 import dev.comon.wildex.ui.theme.WildexColorRoles
 
 /**
@@ -98,6 +100,21 @@ fun TitleScreen(
     isLoggedIn: Boolean = false,
 ) {
     val inspection = LocalInspectionMode.current
+    var showExitDialog by remember { mutableStateOf(false) }
+    val activity = LocalActivity.current
+
+    BackHandler { showExitDialog = true }
+
+    if (showExitDialog) {
+        WildexLogoutConfirmDialog(
+            titleText = "종료",
+            messageText = "앱을 종료하시겠습니까?",
+            confirmText = "종료",
+            dismissText = "취소",
+            onDismiss = { showExitDialog = false },
+            onConfirmLogout = { activity?.finish() },
+        )
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         if(!inspection){
@@ -152,10 +169,11 @@ private fun TitleScreenScrollableLayout(
     onGuideClick: () -> Unit,
     modifier: Modifier = Modifier, // modifier 추가
 ) {
-    // 현재 기기의 화면 구성 정보를 가져옵/니다.
     val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val screenWidth = with(density) { windowInfo.containerSize.width.toDp() }
+    val screenHeight = with(density) { windowInfo.containerSize.height.toDp() }
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val panelShadow = WildexDimens.gridStep * 2

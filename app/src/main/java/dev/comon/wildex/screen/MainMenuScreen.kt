@@ -52,10 +52,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -142,9 +143,24 @@ fun MainMenuScreen(
     var showLogoutDialog by remember(initialLogoutDialogOpen) {
         mutableStateOf(initialLogoutDialogOpen)
     }
+    var showExitDialog by remember { mutableStateOf(false) }
+    val activity = LocalActivity.current
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
+
+    BackHandler(enabled = selectedBottomTab == null) { showExitDialog = true }
+
+    if (showExitDialog) {
+        WildexLogoutConfirmDialog(
+            titleText = "종료",
+            messageText = "앱을 종료하시겠습니까?",
+            confirmText = "종료",
+            dismissText = "취소",
+            onDismiss = { showExitDialog = false },
+            onConfirmLogout = { activity?.finish() },
+        )
+    }
 
     // Journal 탭 내부 하위 화면(BirdList/BirdInfo)의 뒤로가기 상태
     var journalCanNavigateBack by remember { mutableStateOf(false) }
