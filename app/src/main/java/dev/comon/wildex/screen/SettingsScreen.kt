@@ -87,5 +87,47 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        val bgmEnabled by repository.bgmEnabled.collectAsStateWithLifecycle(initialValue = true)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = WildexDimens.borderStrokeChunky,
+                    color = WildexTheme.extraColors.cartridgeOutline,
+                    shape = RectangleShape,
+                )
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    shape = RectangleShape,
+                )
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "배경음악",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Switch(
+                    checked = bgmEnabled,
+                    onCheckedChange = { checked ->
+                        scope.launch {
+                            repository.setBgmEnabled(checked)
+                        }
+                    },
+                )
+            }
+            Text(
+                text = "배경음악을 켜거나 끌 수 있습니다. 테마에 따라 다른 음악이 재생됩니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

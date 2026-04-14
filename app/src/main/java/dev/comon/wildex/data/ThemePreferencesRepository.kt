@@ -15,6 +15,7 @@ private val Context.wildexPreferencesDataStore: DataStore<Preferences> by prefer
 )
 
 private val DarkThemeKey = booleanPreferencesKey("dark_theme")
+private val BgmEnabledKey = booleanPreferencesKey("bgm_enabled")
 
 /**
  * 저장된 값이 없으면 [darkThemeOverride]는 null이며, UI에서 시스템 다크 모드를 따르면 됩니다.
@@ -29,9 +30,19 @@ class ThemePreferencesRepository(
         if (prefs.contains(DarkThemeKey)) prefs[DarkThemeKey] else null
     }
 
+    val bgmEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[BgmEnabledKey] ?: true
+    }
+
     suspend fun setDarkTheme(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[DarkThemeKey] = enabled
+        }
+    }
+
+    suspend fun setBgmEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[BgmEnabledKey] = enabled
         }
     }
 }
