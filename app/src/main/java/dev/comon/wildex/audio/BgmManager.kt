@@ -60,6 +60,11 @@ class BgmManager {
         }
     }
 
+    fun setVolume(level: Float) {
+        val clamped = level.coerceIn(0f, 1f)
+        player?.setVolume(clamped, clamped)
+    }
+
     fun stop() {
         releasePlayer()
         currentIsDark = null

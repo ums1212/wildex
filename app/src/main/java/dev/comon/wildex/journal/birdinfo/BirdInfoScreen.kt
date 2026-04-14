@@ -2,6 +2,11 @@ package dev.comon.wildex.journal.birdinfo
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,14 +25,21 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -35,9 +47,11 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -52,6 +66,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.coroutineScope
@@ -59,6 +76,7 @@ import kotlinx.coroutines.launch
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import dev.comon.wildex.audio.LocalBgmManager
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -71,7 +89,21 @@ fun BirdInfoScreen(
     viewModel: BirdInfoViewModel = viewModel(),
 ) {
     val context = LocalContext.current
+    val bgmManager = LocalBgmManager.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                viewModel.onIntent(BirdInfoIntent.StopTts)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(speciesId) {
         viewModel.onIntent(BirdInfoIntent.Load(speciesId))
@@ -82,27 +114,47 @@ fun BirdInfoScreen(
             when (event) {
                 is BirdInfoUiEvent.ShowError ->
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is BirdInfoUiEvent.ShowTtsError ->
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                BirdInfoUiEvent.DuckBgm -> bgmManager.setVolume(0.2f)
+                BirdInfoUiEvent.RestoreBgm -> bgmManager.setVolume(1f)
             }
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        when {
-            state.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = WildexColorRoles.missionCtaBackground())
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = WildexColorRoles.missionCtaBackground())
+                    }
+                }
+                state.error != null && state.bird == null -> {
+                    BirdInfoErrorState(
+                        message = state.error!!,
+                        onRetry = { viewModel.onIntent(BirdInfoIntent.Retry(speciesId)) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                state.bird != null -> {
+                    BirdInfoContent(
+                        bird = state.bird!!,
+                        isSpeaking = state.isSpeaking,
+                        onTtsClick = { viewModel.onIntent(BirdInfoIntent.ToggleTts) },
+                    )
                 }
             }
-            state.error != null && state.bird == null -> {
-                BirdInfoErrorState(
-                    message = state.error!!,
-                    onRetry = { viewModel.onIntent(BirdInfoIntent.Retry(speciesId)) },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            state.bird != null -> {
-                BirdInfoContent(bird = state.bird!!)
-            }
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = MaterialTheme.colorScheme.inverseSurface,
+                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            )
         }
     }
 }
@@ -110,6 +162,8 @@ fun BirdInfoScreen(
 @Composable
 private fun BirdInfoContent(
     bird: BirdDetail,
+    isSpeaking: Boolean,
+    onTtsClick: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     var showFullScreen by remember { mutableStateOf(false) }
@@ -232,6 +286,15 @@ private fun BirdInfoContent(
                     .background(WildexTheme.extraColors.cartridgeOutline),
             )
 
+            // TTS 스피커 버튼 (generalFeature가 있을 때만 표시)
+            if (bird.generalFeature.isNotBlank()) {
+                TtsSpeakerButton(
+                    isSpeaking = isSpeaking,
+                    onClick = onTtsClick,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+
             // 일반 특징
             if (bird.generalFeature.isNotBlank()) {
                 Text(
@@ -250,6 +313,68 @@ private fun BirdInfoContent(
             }
 
             Spacer(modifier = Modifier.height(WildexDimens.gridMajor))
+        }
+    }
+}
+
+@Composable
+private fun TtsSpeakerButton(
+    isSpeaking: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ctaColor = WildexColorRoles.missionCtaBackground()
+    val depth = WildexDimens.shadowOffsetHard
+    val pressedDepth = depth / 2
+
+    val infiniteTransition = rememberInfiniteTransition(label = "tts_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "glow_alpha",
+    )
+
+    val shadowOffset = if (isSpeaking) pressedDepth else depth
+
+    Box(
+        modifier = modifier
+            .padding(end = depth, bottom = depth),
+        contentAlignment = Alignment.Center,
+    ) {
+        // 하드 셰도우
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .offset(shadowOffset, shadowOffset)
+                .background(WildexTheme.extraColors.cartridgeHardShadow, CircleShape),
+        )
+        // 버튼 본체
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .drawBehind {
+                    if (isSpeaking) {
+                        drawCircle(
+                            color = ctaColor.copy(alpha = glowAlpha),
+                            radius = size.minDimension / 2f + 10.dp.toPx(),
+                        )
+                    }
+                }
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, CircleShape)
+                .background(ctaColor, CircleShape)
+                .clickable(role = Role.Button, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (isSpeaking) Icons.Filled.Stop else Icons.AutoMirrored.Filled.VolumeUp,
+                contentDescription = if (isSpeaking) "TTS 정지" else "TTS 재생",
+                tint = WildexColorRoles.missionCtaForeground(),
+                modifier = Modifier.size(28.dp),
+            )
         }
     }
 }
@@ -611,6 +736,8 @@ private fun BirdInfoScreenPreview() {
                 imageUrl = "",
                 copyright = "",
             ),
+            isSpeaking = false,
+            onTtsClick = {},
         )
     }
 }
