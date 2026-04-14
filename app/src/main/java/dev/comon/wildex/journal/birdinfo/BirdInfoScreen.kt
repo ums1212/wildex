@@ -30,7 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -111,12 +113,14 @@ private fun BirdInfoContent(
 ) {
     val scrollState = rememberScrollState()
     var showFullScreen by remember { mutableStateOf(false) }
+    var retryKey by remember { mutableIntStateOf(0) }
 
     if (showFullScreen && bird.imageUrl.isNotBlank()) {
         BirdImageFullScreenViewer(
             imageUrl = bird.imageUrl,
             contentDescription = bird.name,
             onDismiss = { showFullScreen = false },
+            onImageLoaded = { retryKey++ },
         )
     }
 
@@ -128,39 +132,44 @@ private fun BirdInfoContent(
                 .height(240.dp),
         ) {
             if (bird.imageUrl.isNotBlank()) {
-                SubcomposeAsyncImage(
-                    model = bird.imageUrl,
-                    contentDescription = bird.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(role = Role.Button) { showFullScreen = true },
-                    contentScale = ContentScale.FillHeight,
-                ) {
-                    when (painter.state) {
-                        is AsyncImagePainter.State.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 2.dp,
-                                    color = WildexColorRoles.missionCtaBackground(),
+                key(retryKey) {
+                    SubcomposeAsyncImage(
+                        model = bird.imageUrl,
+                        contentDescription = bird.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(role = Role.Button) { showFullScreen = true },
+                        contentScale = ContentScale.Crop,
+                    ) {
+                        when (painter.state) {
+                            is AsyncImagePainter.State.Loading -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        strokeWidth = 2.dp,
+                                        color = WildexColorRoles.missionCtaBackground(),
+                                    )
+                                }
+                            }
+                            is AsyncImagePainter.State.Error -> {
+                                val errorState = painter.state as AsyncImagePainter.State.Error
+                                Log.e(
+                                    "BirdInfoImage",
+                                    "이미지 로드 실패 url=${bird.imageUrl}",
+                                    errorState.result.throwable,
+                                )
+                                BirdImagePlaceholder(
+                                    label = "IMAGE ERROR",
+                                    subtitle = "click and retry",
                                 )
                             }
+                            else -> SubcomposeAsyncImageContent()
                         }
-                        is AsyncImagePainter.State.Error -> {
-                            val errorState = painter.state as AsyncImagePainter.State.Error
-                            Log.e(
-                                "BirdInfoImage",
-                                "이미지 로드 실패 url=${bird.imageUrl}",
-                                errorState.result.throwable,
-                            )
-                            BirdImagePlaceholder(label = "IMAGE ERROR")
-                        }
-                        else -> SubcomposeAsyncImageContent()
                     }
                 }
             } else {
@@ -250,6 +259,7 @@ private fun BirdImageFullScreenViewer(
     imageUrl: String,
     contentDescription: String,
     onDismiss: () -> Unit,
+    onImageLoaded: () -> Unit = {},
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -320,7 +330,13 @@ private fun BirdImageFullScreenViewer(
                     ),
                 contentScale = ContentScale.Fit,
             ) {
-                when (painter.state) {
+                val painterState = painter.state
+                LaunchedEffect(painterState) {
+                    if (painterState is AsyncImagePainter.State.Success) {
+                        onImageLoaded()
+                    }
+                }
+                when (painterState) {
                     is AsyncImagePainter.State.Loading -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -376,18 +392,30 @@ private fun BirdImageFullScreenViewer(
 }
 
 @Composable
-private fun BirdImagePlaceholder(label: String) {
+private fun BirdImagePlaceholder(label: String, subtitle: String? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
+        }
     }
 }
 
