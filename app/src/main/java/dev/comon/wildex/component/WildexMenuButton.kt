@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
@@ -262,6 +264,68 @@ fun WildexCartridgePressButton(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
             content = content
+        )
+    }
+}
+
+/**
+ * 원형 카트리지 스타일 프레스 버튼. [WildexCartridgePressButton]과 동일한 하드 섀도·눌림 효과를
+ * [CircleShape]에 적용합니다.
+ *
+ * @param isActive 외부에서 제어하는 활성(토글) 상태. `true`일 때 눌린 것과 동일하게 섀도가 줄어듭니다.
+ * @param buttonModifier 버튼 본체(원)에 추가할 Modifier. [drawBehind] 등 원 바깥에 그리는 효과를 넣을 때 활용합니다.
+ * @param content 버튼 중앙에 배치되는 슬롯.
+ */
+@Composable
+fun WildexCircleCartridgePressButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 64.dp,
+    enabled: Boolean = true,
+    isActive: Boolean = false,
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    frameColor: Color = WildexTheme.extraColors.cartridgeOutline,
+    shadowBlockColor: Color = WildexTheme.extraColors.cartridgeHardShadow,
+    buttonModifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depthNormal = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val isDown = pressed || isActive
+    val shadowOffset = if (isDown) depthPressed else depthNormal
+    val contentInset = if (isDown) depthNormal - depthPressed else 0.dp
+
+    Box(
+        modifier = modifier.padding(end = depthNormal, bottom = depthNormal),
+        contentAlignment = Alignment.Center,
+    ) {
+        // 하드 섀도
+        Box(
+            modifier = Modifier
+                .size(size)
+                .offset(shadowOffset, shadowOffset)
+                .background(shadowBlockColor, CircleShape),
+        )
+        // 버튼 본체
+        Box(
+            modifier = Modifier
+                .size(size)
+                .then(if (isDown) Modifier.offset(contentInset, contentInset) else Modifier)
+                .then(buttonModifier)
+                .border(WildexDimens.borderStrokeChunky, frameColor, CircleShape)
+                .background(backgroundColor, CircleShape)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
+            content = content,
         )
     }
 }

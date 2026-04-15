@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -77,6 +76,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import dev.comon.wildex.audio.LocalBgmManager
+import dev.comon.wildex.component.WildexCircleCartridgePressButton
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -324,8 +324,6 @@ private fun TtsSpeakerButton(
     modifier: Modifier = Modifier,
 ) {
     val ctaColor = WildexColorRoles.missionCtaBackground()
-    val depth = WildexDimens.shadowOffsetHard
-    val pressedDepth = depth / 2
 
     val infiniteTransition = rememberInfiniteTransition(label = "tts_glow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -338,44 +336,26 @@ private fun TtsSpeakerButton(
         label = "glow_alpha",
     )
 
-    val shadowOffset = if (isSpeaking) pressedDepth else depth
-
-    Box(
-        modifier = modifier
-            .padding(end = depth, bottom = depth),
-        contentAlignment = Alignment.Center,
+    WildexCircleCartridgePressButton(
+        onClick = onClick,
+        modifier = modifier,
+        isActive = isSpeaking,
+        backgroundColor = ctaColor,
+        buttonModifier = Modifier.drawBehind {
+            if (isSpeaking) {
+                drawCircle(
+                    color = ctaColor.copy(alpha = glowAlpha),
+                    radius = size.minDimension / 2f + 10.dp.toPx(),
+                )
+            }
+        },
     ) {
-        // 하드 셰도우
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .offset(shadowOffset, shadowOffset)
-                .background(WildexTheme.extraColors.cartridgeHardShadow, CircleShape),
+        Icon(
+            imageVector = if (isSpeaking) Icons.Filled.Stop else Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = if (isSpeaking) "TTS 정지" else "TTS 재생",
+            tint = WildexColorRoles.missionCtaForeground(),
+            modifier = Modifier.size(28.dp),
         )
-        // 버튼 본체
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .drawBehind {
-                    if (isSpeaking) {
-                        drawCircle(
-                            color = ctaColor.copy(alpha = glowAlpha),
-                            radius = size.minDimension / 2f + 10.dp.toPx(),
-                        )
-                    }
-                }
-                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, CircleShape)
-                .background(ctaColor, CircleShape)
-                .clickable(role = Role.Button, onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (isSpeaking) Icons.Filled.Stop else Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = if (isSpeaking) "TTS 정지" else "TTS 재생",
-                tint = WildexColorRoles.missionCtaForeground(),
-                modifier = Modifier.size(28.dp),
-            )
-        }
     }
 }
 
