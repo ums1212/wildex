@@ -1,5 +1,6 @@
 package dev.comon.wildex.navigation
 
+import android.os.Build
 import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -120,13 +121,26 @@ fun WildexRoot(isDarkTheme: Boolean) {
                         ?: "TRAINER"
                 } else "TRAINER"
 
+                val isEmulator = Build.FINGERPRINT.startsWith("generic") ||
+                    Build.FINGERPRINT.startsWith("unknown") ||
+                    Build.MODEL.contains("google_sdk", ignoreCase = true) ||
+                    Build.MODEL.contains("Emulator", ignoreCase = true) ||
+                    Build.MODEL.contains("Android SDK built for x86", ignoreCase = true) ||
+                    Build.MANUFACTURER.contains("Genymotion", ignoreCase = true) ||
+                    (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+                    Build.PRODUCT.contains("sdk_gphone", ignoreCase = true) ||
+                    Build.PRODUCT.contains("emulator", ignoreCase = true) ||
+                    Build.PRODUCT.contains("simulator", ignoreCase = true) ||
+                    Build.HARDWARE.contains("goldfish", ignoreCase = true) ||
+                    Build.HARDWARE.contains("ranchu", ignoreCase = true)
+
                 TitleScreen(
                     userNickname = userNickname,
                     isDarkTheme = isDarkTheme,
                     isLoading = isLoggingIn,
                     isLoggedIn = isLoggedIn,
                     onLoginClick = {
-                        if (isLoggedIn) {
+                        if (isLoggedIn || isEmulator) {
                             navController.navigate(WildexMainShellRoute) {
                                 popUpTo(WildexTitleRoute) { inclusive = true }
                             }
@@ -155,9 +169,31 @@ fun WildexRoot(isDarkTheme: Boolean) {
                 //  isSignOut만으로는 두 경우를 구별할 수 없음)
                 var intentionalLogout by remember { mutableStateOf(false) }
 
-                // 포그라운드 복귀 시마다 세션 유효성을 서버에 즉시 확인
+                // 에뮬레이터 여부: Play Store AVD 포함 (Build.HARDWARE == "ranchu"/"goldfish")
+                val isEmulator = Build.FINGERPRINT.startsWith("generic") ||
+                    Build.FINGERPRINT.startsWith("unknown") ||
+                    Build.MODEL.contains("google_sdk", ignoreCase = true) ||
+                    Build.MODEL.contains("Emulator", ignoreCase = true) ||
+                    Build.MODEL.contains("Android SDK built for x86", ignoreCase = true) ||
+                    Build.MANUFACTURER.contains("Genymotion", ignoreCase = true) ||
+                    (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+                    Build.PRODUCT.contains("sdk_gphone", ignoreCase = true) ||
+                    Build.PRODUCT.contains("emulator", ignoreCase = true) ||
+                    Build.PRODUCT.contains("simulator", ignoreCase = true) ||
+                    Build.HARDWARE.contains("goldfish", ignoreCase = true) ||
+                    Build.HARDWARE.contains("ranchu", ignoreCase = true)
+
+                // 타이틀 화면으로 복귀하는 단일 경로 — back stack을 완전히 비우고 TitleRoute를 추가
+                val navigateToTitle: () -> Unit = {
+                    navController.navigate(WildexTitleRoute) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+
+                // 포그라운드 복귀 시마다 세션 유효성을 서버에 즉시 확인 (에뮬레이터 제외)
                 val lifecycleOwner = LocalLifecycleOwner.current
                 LaunchedEffect(lifecycleOwner) {
+                    if (isEmulator) return@LaunchedEffect
                     lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                         Log.d("test1234", "resumed")
                         try {
@@ -172,19 +208,16 @@ fun WildexRoot(isDarkTheme: Boolean) {
                     }
                 }
 
+                // 세션 상태 감시 — 에뮬레이터에서는 인증 없이 진입하므로 건너뜀
                 LaunchedEffect(sessionStatus) {
+                    if (isEmulator) return@LaunchedEffect
                     when (sessionStatus) {
                         is SessionStatus.NotAuthenticated -> {
-                            if (intentionalLogout) {
-                                // 사용자가 직접 로그아웃 → 다이얼로그 없이 바로 이동
-                                intentionalLogout = false
-                                navController.navigate(WildexTitleRoute) {
-                                    popUpTo(WildexMainShellRoute) { inclusive = true }
-                                }
-                            } else {
+                            if (!intentionalLogout) {
                                 // 유저 삭제·토큰 만료 등 외부 세션 해제 → 안내 다이얼로그 표시
                                 showSessionExpiredDialog = true
                             }
+                            // intentionalLogout 경우 navigation은 onLogout / onConfirmLogout 에서 직접 처리
                         }
                         is SessionStatus.RefreshFailure -> {
                             // 500 에러·네트워크 오류로 갱신 실패 → 안내 다이얼로그 표시
@@ -204,13 +237,9 @@ fun WildexRoot(isDarkTheme: Boolean) {
                         onConfirmLogout = {
                             showSessionExpiredDialog = false
                             scope.launch {
-                                // signOut()이 NotAuthenticated를 방출하므로
-                                // LaunchedEffect(sessionStatus)가 다시 다이얼로그를 띄우지 않도록 플래그를 먼저 세움
                                 intentionalLogout = true
                                 runCatching { SupabaseClient.client.auth.signOut() }
-                                navController.navigate(WildexTitleRoute) {
-                                    popUpTo(WildexMainShellRoute) { inclusive = true }
-                                }
+                                navigateToTitle()
                             }
                         },
                     )
@@ -230,15 +259,12 @@ fun WildexRoot(isDarkTheme: Boolean) {
                     animatedVisibilityScope = this,
                     isLoggedIn = isLoggedIn,
                     userNickname = userNickname,
-                    onLoginClick = {
-                        navController.navigate(WildexTitleRoute) {
-                            popUpTo(WildexMainShellRoute) { inclusive = true }
-                        }
-                    },
+                    onLoginClick = { navigateToTitle() },
                     onLogout = {
                         scope.launch {
                             intentionalLogout = true
                             SupabaseClient.client.auth.signOut()
+                            navigateToTitle()
                         }
                     },
                 )
