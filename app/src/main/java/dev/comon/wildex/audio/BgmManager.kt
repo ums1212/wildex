@@ -5,7 +5,7 @@ import android.media.MediaPlayer
 import androidx.compose.runtime.staticCompositionLocalOf
 import dev.comon.wildex.R
 
-class BgmManager {
+object BgmManager {
     private var player: MediaPlayer? = null
     private var currentIsDark: Boolean? = null
     private var isPaused: Boolean = false
@@ -81,5 +81,5 @@ class BgmManager {
 }
 
 val LocalBgmManager = staticCompositionLocalOf<BgmManager> {
-    error("BgmManager가 제공되지 않았습니다.")
+    BgmManager
 }
