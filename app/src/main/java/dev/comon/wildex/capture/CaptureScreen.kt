@@ -270,11 +270,13 @@ fun CaptureScreen(
             )
         }
 
-        CaptureScreenDotGrid(
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (state.hasCameraPermission) {
+            CaptureScreenDotGrid(
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
-        Box(
+        if (state.hasCameraPermission) Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(overlayZoneHeight)
@@ -702,7 +704,7 @@ private fun CaptureShutterCluster(
     val shadow = WildexTheme.extraColors.cartridgeHardShadow
     val red = WildexPalette.SpecSheetPureRed
     val iconTint = WildexPalette.OnPrimary
-    val outer = 44.dp
+    val outer = 64.dp
     val ringInset = WildexDimens.gridStep
 
     Box(modifier = Modifier.padding(end = depth, bottom = depth)) {
