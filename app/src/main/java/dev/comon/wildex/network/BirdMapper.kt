@@ -20,7 +20,8 @@ fun BirdListResponseDto.toDomain(): BirdListResult {
         },
         totalCount = body?.totalCount?.toIntOrNull() ?: 0,
         pageNo = body?.pageNo?.toIntOrNull() ?: 1,
-        numOfRows = body?.numOfRows?.toIntOrNull() ?: 10
+        numOfRows = body?.numOfRows?.toIntOrNull() ?: 10,
+        hasNext = body?.hasNext ?: false
     )
 }
 

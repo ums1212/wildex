@@ -18,7 +18,8 @@ data class BirdListBodyDto(
     val items: BirdListItemsDto?,
     val numOfRows: String?,
     val pageNo: String?,
-    val totalCount: String?
+    val totalCount: String?,
+    val hasNext: Boolean?
 )
 
 @Serializable

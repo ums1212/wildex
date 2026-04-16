@@ -60,7 +60,7 @@ class BirdListViewModel(application: Application) : AndroidViewModel(application
                         isLoading = false,
                         isLoadingMore = false,
                         pageNo = page,
-                        hasMore = result.items.size >= PAGE_SIZE,
+                        hasMore = result.hasNext,
                         error = null,
                     )
                 }
