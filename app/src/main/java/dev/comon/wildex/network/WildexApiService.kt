@@ -3,6 +3,7 @@ package dev.comon.wildex.network
 import dev.comon.wildex.network.dto.BirdIdentifyResponseDto
 import dev.comon.wildex.network.dto.BirdInfoResponseDto
 import dev.comon.wildex.network.dto.BirdListResponseDto
+import dev.comon.wildex.network.dto.BirdSearchResponseDto
 import okhttp3.MultipartBody
 import retrofit2.http.GET
 import retrofit2.http.Multipart
@@ -29,9 +30,9 @@ interface WildexApiService {
         @Part image: MultipartBody.Part
     ): BirdIdentifyResponseDto
 
-    /** 조류 이름으로 조류 정보를 검색한다. (서버 API 미구현 — placeholder) */
+    /** 조류 한국어 이름 부분 일치 검색 (서버 icontains). */
     @GET("/api/wildex/bird-search/")
     suspend fun searchBirdByName(
-        @Query("name") name: String
-    ): BirdInfoResponseDto
+        @Query("anml_nm") name: String
+    ): BirdSearchResponseDto
 }

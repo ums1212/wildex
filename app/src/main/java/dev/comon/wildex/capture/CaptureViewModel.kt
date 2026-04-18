@@ -126,12 +126,12 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** 조류 이름 인식 후 DataStore → 검색 API 순으로 조류 정보를 조회하여 화면 이동 */
+    /** 조류 이름 인식 후 DataStore → 검색 API 순으로 speciesId를 조회하여 화면 이동 */
     private suspend fun searchBirdAndNavigate(birdName: String) {
         runCatching { birdRepository.searchByName(birdName) }
-            .onSuccess { detail ->
+            .onSuccess { speciesId ->
                 _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
-                _events.send(CaptureUiEvent.NavigateToBirdInfo(detail.speciesId))
+                _events.send(CaptureUiEvent.NavigateToBirdInfo(speciesId))
             }
             .onFailure {
                 _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }

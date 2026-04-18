@@ -4,7 +4,9 @@ import android.content.Context
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.domain.model.BirdListResult
 import dev.comon.wildex.network.WildexApiClient
+import dev.comon.wildex.network.dto.BirdSearchResultDto
 import dev.comon.wildex.network.toDomain
+import retrofit2.HttpException
 
 /**
  * 캐시-우선(Cache-First) 전략:
@@ -33,17 +35,42 @@ class BirdRepository(context: Context) {
     }
 
     /**
-     * 조류 이름으로 조류 상세 정보를 조회한다.
-     * 1. `bird_info_*` 캐시에서 이름 검색 → 히트 시 즉시 반환
-     * 2. `bird_list_page_*` 캐시에서 speciesId 검색 → 히트 시 [getBirdInfo] 호출
-     * 3. 두 캐시 모두 미스 → [NoSuchElementException] 발생 (서버 검색 API 미구현 — 추후 연결 예정)
+     * 조류 이름으로 anmlSpecsId 를 반환한다.
+     * 1. `bird_info_*` 캐시에서 이름 검색 → 히트 시 speciesId 반환
+     * 2. `bird_list_page_*` 캐시에서 speciesId 역추적
+     * 3. 서버 `/api/wildex/bird-search/` 호출 → 매칭된 anmlSpecsId 반환
+     * 최종 미스 / 404: [NoSuchElementException] 발생
      */
-    suspend fun searchByName(name: String): BirdDetail {
-        cache.searchByName(name)?.let { return it }
+    suspend fun searchByName(name: String): String {
+        cache.searchByName(name)?.let { return it.speciesId }
 
-        val speciesId = cache.findSpeciesIdByName(name)
-            ?: throw NoSuchElementException(name)
+        cache.findSpeciesIdByName(name)?.let { return it }
 
-        return getBirdInfo(speciesId)
+        return try {
+            val response = api.searchBirdByName(name = name)
+            pickBestMatch(response.results, name)?.anmlSpecsId
+                ?: throw NoSuchElementException(name)
+        } catch (e: HttpException) {
+            when (e.code()) {
+                404 -> throw NoSuchElementException(name)
+                400 -> throw IllegalArgumentException("Invalid anml_nm: '$name'", e)
+                else -> throw e
+            }
+        }
+    }
+
+    private fun pickBestMatch(
+        results: List<BirdSearchResultDto>,
+        query: String,
+    ): BirdSearchResultDto? {
+        if (results.isEmpty()) return null
+        val q = query.trim()
+        results.firstOrNull { it.anmlNm.trim().equals(q, ignoreCase = true) }
+            ?.let { return it }
+        val qNoSpace = q.replace(" ", "")
+        results.firstOrNull {
+            it.anmlNm.replace(" ", "").equals(qNoSpace, ignoreCase = true)
+        }?.let { return it }
+        return results.first()
     }
 }
