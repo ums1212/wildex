@@ -61,7 +61,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -104,8 +103,6 @@ import androidx.navigation.toRoute
 import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
-import dev.comon.wildex.journal.birdinfo.BirdInfoScreen
-import dev.comon.wildex.navigation.WildexBirdInfoRoute
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -168,7 +165,6 @@ fun MainMenuScreen(
     // Journal 탭 내부 하위 화면(BirdList/BirdInfo)의 뒤로가기 상태
     var journalCanNavigateBack by remember { mutableStateOf(false) }
     var journalOnBack: () -> Unit by remember { mutableStateOf({}) }
-    var journalScreenTitle: String? by remember { mutableStateOf(null) }
 
     // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
     var barsVisible by remember { mutableStateOf(true) }
@@ -176,6 +172,8 @@ fun MainMenuScreen(
     var bottomBarHeightPx by remember { mutableIntStateOf(0) }
     // 캡처 분석 중에는 하단 바 강제 숨김
     var captureAnalyzing by remember { mutableStateOf(false) }
+    // 캡처 화면에서 인식된 조류 speciesId — Journal로 이동 후 소비됨
+    var pendingCaptureSpeciesId by remember { mutableStateOf<String?>(null) }
     val topBarTranslation by animateFloatAsState(
         targetValue = if (barsVisible && !captureAnalyzing) 0f else -topBarHeightPx.toFloat(),
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -187,14 +185,6 @@ fun MainMenuScreen(
 
     LaunchedEffect(journalCanNavigateBack) {
         if (!journalCanNavigateBack) barsVisible = true
-    }
-
-    val isOnBirdInfoRoute = navBackStackEntry?.destination?.hasRoute(WildexBirdInfoRoute::class) == true
-    LaunchedEffect(isOnBirdInfoRoute) {
-        if (isOnBirdInfoRoute) {
-            journalCanNavigateBack = true
-            journalOnBack = { navController.popBackStack() }
-        }
     }
 
     LaunchedEffect(selectedBottomTab) {
@@ -348,7 +338,6 @@ fun MainMenuScreen(
                         .graphicsLayer { translationY = bottomBarTranslation },
                 ) {
                     MainMenuBottomBar(
-                        tabs = mainMenuBottomTabUiRows,
                         selectedTab = selectedBottomTab,
                         onTabClick = { tab ->
                             val destination = navBackStackEntry?.destination
@@ -453,11 +442,12 @@ fun MainMenuScreen(
                 },
             ) {
                 JournalScreen(
-                    onBackNavigationState = { canNavigateBack, onBack, title ->
+                    onBackNavigationState = { canNavigateBack, onBack, _ ->
                         journalCanNavigateBack = canNavigateBack
                         journalOnBack = onBack
-                        journalScreenTitle = title
                     },
+                    pendingSpeciesId = pendingCaptureSpeciesId,
+                    onPendingSpeciesIdConsumed = { pendingCaptureSpeciesId = null },
                 )
             }
             composable<WildexCaptureTabRoute>(
@@ -488,7 +478,8 @@ fun MainMenuScreen(
             ) {
                 CaptureScreen(
                     onNavigateToBirdInfo = { speciesId ->
-                        navController.navigate(WildexBirdInfoRoute(speciesId))
+                        pendingCaptureSpeciesId = speciesId
+                        navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
                     },
                     onAnalyzingChanged = { captureAnalyzing = it },
                 )
@@ -521,35 +512,6 @@ fun MainMenuScreen(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
                 CaptureResultScreen(speciesId = route.speciesId)
-            }
-            composable<WildexBirdInfoRoute>(
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                exitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                popEnterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                popExitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<WildexBirdInfoRoute>()
-                BirdInfoScreen(speciesId = route.speciesId)
             }
             composable<WildexSearchTabRoute>(
                 enterTransition = {
@@ -783,10 +745,10 @@ private fun MainMenuSectionLabel() {
 
 @Composable
 private fun MainMenuBottomBar(
-    tabs: List<MainMenuBottomTabUi>,
     selectedTab: WildexMainBottomTabRoute?,
     onTabClick: (WildexMainBottomTabRoute) -> Unit,
 ) {
+    val tabs = mainMenuBottomTabUiRows
     // navigationBarsPadding을 Row와 같은 높이 제한에 두면, 패딩이 Row 안쪽에서 높이를 잡아먹어 탭이 세로로 잘림.
     Column(
         modifier = Modifier

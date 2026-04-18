@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -52,8 +53,10 @@ import dev.comon.wildex.ui.theme.WildexTheme
 
 @Composable
 fun JournalScreen(
-    onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit, title: String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
+    onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit, title: String?) -> Unit = { _, _, _ -> },
+    pendingSpeciesId: String? = null,
+    onPendingSpeciesIdConsumed: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -67,6 +70,15 @@ fun JournalScreen(
 
     SideEffect {
         onBackNavigationState(canNavigateBack, { navController.popBackStack() }, screenTitle)
+    }
+
+    LaunchedEffect(pendingSpeciesId) {
+        if (pendingSpeciesId != null) {
+            navController.popBackStack(WildexJournalCategoryRoute, inclusive = false)
+            navController.navigate(WildexBirdListRoute)
+            navController.navigate(WildexBirdInfoRoute(pendingSpeciesId))
+            onPendingSpeciesIdConsumed()
+        }
     }
 
     NavHost(
