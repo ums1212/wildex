@@ -61,6 +61,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -103,6 +104,8 @@ import androidx.navigation.toRoute
 import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
+import dev.comon.wildex.journal.birdinfo.BirdInfoScreen
+import dev.comon.wildex.navigation.WildexBirdInfoRoute
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -171,17 +174,31 @@ fun MainMenuScreen(
     var barsVisible by remember { mutableStateOf(true) }
     var topBarHeightPx by remember { mutableIntStateOf(0) }
     var bottomBarHeightPx by remember { mutableIntStateOf(0) }
+    // 캡처 분석 중에는 하단 바 강제 숨김
+    var captureAnalyzing by remember { mutableStateOf(false) }
     val topBarTranslation by animateFloatAsState(
-        targetValue = if (barsVisible) 0f else -topBarHeightPx.toFloat(),
+        targetValue = if (barsVisible && !captureAnalyzing) 0f else -topBarHeightPx.toFloat(),
         animationSpec = tween(300, easing = FastOutSlowInEasing),
     )
     val bottomBarTranslation by animateFloatAsState(
-        targetValue = if (barsVisible) 0f else bottomBarHeightPx.toFloat(),
+        targetValue = if (barsVisible && !captureAnalyzing) 0f else bottomBarHeightPx.toFloat(),
         animationSpec = tween(300, easing = FastOutSlowInEasing),
     )
 
     LaunchedEffect(journalCanNavigateBack) {
         if (!journalCanNavigateBack) barsVisible = true
+    }
+
+    val isOnBirdInfoRoute = navBackStackEntry?.destination?.hasRoute(WildexBirdInfoRoute::class) == true
+    LaunchedEffect(isOnBirdInfoRoute) {
+        if (isOnBirdInfoRoute) {
+            journalCanNavigateBack = true
+            journalOnBack = { navController.popBackStack() }
+        }
+    }
+
+    LaunchedEffect(selectedBottomTab) {
+        if (selectedBottomTab != WildexCaptureTabRoute) captureAnalyzing = false
     }
 
     val nestedScrollConnection = remember {
@@ -471,8 +488,9 @@ fun MainMenuScreen(
             ) {
                 CaptureScreen(
                     onNavigateToBirdInfo = { speciesId ->
-                        navController.navigate(WildexCaptureResultRoute(speciesId))
+                        navController.navigate(WildexBirdInfoRoute(speciesId))
                     },
+                    onAnalyzingChanged = { captureAnalyzing = it },
                 )
             }
             composable<WildexCaptureResultRoute>(
@@ -503,6 +521,35 @@ fun MainMenuScreen(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
                 CaptureResultScreen(speciesId = route.speciesId)
+            }
+            composable<WildexBirdInfoRoute>(
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<WildexBirdInfoRoute>()
+                BirdInfoScreen(speciesId = route.speciesId)
             }
             composable<WildexSearchTabRoute>(
                 enterTransition = {

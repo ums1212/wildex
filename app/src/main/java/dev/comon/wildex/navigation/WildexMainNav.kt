@@ -47,6 +47,7 @@ fun NavDestination?.wildexSelectedMainBottomTab(): WildexMainBottomTabRoute? {
         hasRoute(WildexCaptureTabRoute::class) -> WildexCaptureTabRoute
         hasRoute(WildexSearchTabRoute::class) -> WildexSearchTabRoute
         hasRoute(WildexSettingsTabRoute::class) -> WildexSettingsTabRoute
+        hasRoute(WildexBirdInfoRoute::class) -> WildexJournalTabRoute
         else -> null
     }
 }

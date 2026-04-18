@@ -1,9 +1,11 @@
 package dev.comon.wildex.capture
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import dev.comon.wildex.data.AnalysisRepository
-import dev.comon.wildex.data.AnalysisResultStore
+import dev.comon.wildex.data.BirdImageAnalyzer
+import dev.comon.wildex.data.BirdRepository
+import dev.comon.wildex.data.GeminiBirdImageAnalyzer
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +19,10 @@ import java.net.UnknownHostException
 
 private const val ZoomStep = 0.2f
 
-class CaptureViewModel(
-    private val analysisRepository: AnalysisRepository = AnalysisRepository(),
-) : ViewModel() {
+class CaptureViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val birdImageAnalyzer: BirdImageAnalyzer = GeminiBirdImageAnalyzer()
+    private val birdRepository: BirdRepository = BirdRepository(application)
 
     private val _state = MutableStateFlow(CaptureUiState())
     val state: StateFlow<CaptureUiState> = _state.asStateFlow()
@@ -75,7 +78,7 @@ class CaptureViewModel(
             is CaptureIntent.CameraBindFailed -> viewModelScope.launch {
                 _events.send(
                     CaptureUiEvent.ShowSnackbar(
-                        AnalysisError.UNKNOWN.userMessage,
+                        BirdRecognitionError.UNKNOWN.userMessage,
                     ),
                 )
             }
@@ -83,26 +86,28 @@ class CaptureViewModel(
             is CaptureIntent.CaptureSucceeded -> {
                 isCaptureInProgress = false
                 viewModelScope.launch {
-                    analysisRepository.analyzeImage(intent.imageBytes, intent.rotationDegrees)
+                    birdImageAnalyzer.recognizeBird(intent.imageBytes, intent.rotationDegrees)
                         .catch { e ->
-                            val error = mapToAnalysisError(e)
-                            emit(AnalysisState.Error(error))
+                            emit(BirdRecognitionState.Error(mapToRecognitionError(e)))
                         }
-                        .collect { analysisState ->
-                            when (analysisState) {
-                                AnalysisState.Analyzing -> {
-                                    _state.update { it.copy(isAnalyzing = true) }
+                        .collect { recognitionState ->
+                            when (recognitionState) {
+                                BirdRecognitionState.Analyzing -> {
+                                    _state.update {
+                                        it.copy(
+                                            isAnalyzing = true,
+                                            frozenFrameBytes = intent.imageBytes,
+                                            frozenFrameRotation = intent.rotationDegrees,
+                                        )
+                                    }
                                 }
-                                is AnalysisState.Success -> {
-                                    _state.update { it.copy(isAnalyzing = false) }
-                                    AnalysisResultStore.save(analysisState.predictions)
-                                    val topId = analysisState.predictions.firstOrNull()?.taxonId?.toString() ?: ""
-                                    _events.send(CaptureUiEvent.NavigateToBirdInfo(topId))
+                                is BirdRecognitionState.Recognized -> {
+                                    searchBirdAndNavigate(recognitionState.birdName)
                                 }
-                                is AnalysisState.Error -> {
-                                    _state.update { it.copy(isAnalyzing = false) }
+                                is BirdRecognitionState.Error -> {
+                                    _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
                                     _events.send(
-                                        CaptureUiEvent.ShowSnackbar(analysisState.error.userMessage),
+                                        CaptureUiEvent.ShowSnackbar(recognitionState.error.userMessage),
                                     )
                                 }
                             }
@@ -113,21 +118,33 @@ class CaptureViewModel(
             is CaptureIntent.CaptureFailed -> {
                 isCaptureInProgress = false
                 viewModelScope.launch {
-                    _events.send(CaptureUiEvent.ShowSnackbar(mapToCaptureError(intent.error).userMessage))
+                    _events.send(
+                        CaptureUiEvent.ShowSnackbar(BirdRecognitionError.UNKNOWN.userMessage),
+                    )
                 }
             }
         }
     }
 
-    private fun mapToCaptureError(e: Throwable): AnalysisError = when {
-        e is IllegalStateException && e.message?.contains("준비") == true -> AnalysisError.CAMERA_NOT_READY
-        else -> AnalysisError.INVALID_IMAGE
+    /** 조류 이름 인식 후 DataStore → 검색 API 순으로 조류 정보를 조회하여 화면 이동 */
+    private suspend fun searchBirdAndNavigate(birdName: String) {
+        runCatching { birdRepository.searchByName(birdName) }
+            .onSuccess { detail ->
+                _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
+                _events.send(CaptureUiEvent.NavigateToBirdInfo(detail.speciesId))
+            }
+            .onFailure {
+                _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
+                _events.send(
+                    CaptureUiEvent.ShowSnackbar("조류 정보를 찾을 수 없습니다. 다시 시도해주세요."),
+                )
+            }
     }
 
-    private fun mapToAnalysisError(e: Throwable): AnalysisError = when (e) {
-        is UnknownHostException -> AnalysisError.NETWORK_UNAVAILABLE
-        is SocketTimeoutException -> AnalysisError.TIMEOUT
-        is kotlinx.coroutines.TimeoutCancellationException -> AnalysisError.TIMEOUT
-        else -> AnalysisError.UNKNOWN
+    private fun mapToRecognitionError(e: Throwable): BirdRecognitionError = when (e) {
+        is UnknownHostException -> BirdRecognitionError.NETWORK_UNAVAILABLE
+        is SocketTimeoutException -> BirdRecognitionError.TIMEOUT
+        is kotlinx.coroutines.TimeoutCancellationException -> BirdRecognitionError.TIMEOUT
+        else -> BirdRecognitionError.UNKNOWN
     }
 }

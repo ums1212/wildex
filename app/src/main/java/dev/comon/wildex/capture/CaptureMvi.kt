@@ -9,9 +9,46 @@ data class CaptureUiState(
     val zoomMax: Float = 4f,
     val isoAuto: Boolean = true,
     val wbDay: Boolean = true,
-    /** 서버 분석 요청 진행 중 여부 — true 일 때 오버레이 표시 및 셔터 잠금 */
+    /** AI 인식 및 조류 정보 검색 진행 중 여부 — true 일 때 오버레이 표시 및 셔터 잠금 */
     val isAnalyzing: Boolean = false,
-)
+    /** 분석 중 카메라 프리뷰 위에 덮을 정지 프레임 JPEG 바이트 — null 이면 라이브 프리뷰 노출 */
+    val frozenFrameBytes: ByteArray? = null,
+    val frozenFrameRotation: Int = 0,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as CaptureUiState
+
+        if (hasCameraPermission != other.hasCameraPermission) return false
+        if (flashOn != other.flashOn) return false
+        if (zoomRatio != other.zoomRatio) return false
+        if (zoomMin != other.zoomMin) return false
+        if (zoomMax != other.zoomMax) return false
+        if (isoAuto != other.isoAuto) return false
+        if (wbDay != other.wbDay) return false
+        if (isAnalyzing != other.isAnalyzing) return false
+        if (frozenFrameRotation != other.frozenFrameRotation) return false
+        if (!frozenFrameBytes.contentEquals(other.frozenFrameBytes)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = hasCameraPermission.hashCode()
+        result = 31 * result + flashOn.hashCode()
+        result = 31 * result + zoomRatio.hashCode()
+        result = 31 * result + zoomMin.hashCode()
+        result = 31 * result + zoomMax.hashCode()
+        result = 31 * result + isoAuto.hashCode()
+        result = 31 * result + wbDay.hashCode()
+        result = 31 * result + isAnalyzing.hashCode()
+        result = 31 * result + frozenFrameRotation
+        result = 31 * result + (frozenFrameBytes?.contentHashCode() ?: 0)
+        return result
+    }
+}
 
 /** 사용자 액션·카메라 계층에서 VM으로 보내는 입력 */
 sealed interface CaptureIntent {

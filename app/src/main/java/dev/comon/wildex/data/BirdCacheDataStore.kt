@@ -54,4 +54,34 @@ class BirdCacheDataStore(context: Context) {
             .getOrNull() ?: return
         store.edit { it[key] = json }
     }
+
+    /**
+     * 캐시된 모든 [BirdDetail](`bird_info_*`) 중 [name]을 포함하는 항목을 반환한다.
+     */
+    suspend fun searchByName(name: String): BirdDetail? {
+        val prefs = store.data.firstOrNull() ?: return null
+        for ((key, value) in prefs.asMap()) {
+            if (!key.name.startsWith("bird_info_") || value !is String) continue
+            val detail = runCatching { cacheJson.decodeFromString<BirdDetail>(value) }.getOrNull()
+                ?: continue
+            if (detail.name.contains(name, ignoreCase = true)) return detail
+        }
+        return null
+    }
+
+    /**
+     * 캐시된 모든 목록 페이지(`bird_list_page_*`)를 순회하여
+     * [name]을 포함하는 항목의 speciesId를 반환한다.
+     */
+    suspend fun findSpeciesIdByName(name: String): String? {
+        val prefs = store.data.firstOrNull() ?: return null
+        for ((key, value) in prefs.asMap()) {
+            if (!key.name.startsWith("bird_list_page_") || value !is String) continue
+            val result = runCatching { cacheJson.decodeFromString<BirdListResult>(value) }.getOrNull()
+                ?: continue
+            val match = result.items.firstOrNull { it.name.contains(name, ignoreCase = true) }
+            if (match != null) return match.speciesId
+        }
+        return null
+    }
 }

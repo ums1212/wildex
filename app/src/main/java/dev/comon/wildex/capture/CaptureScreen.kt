@@ -3,6 +3,8 @@ package dev.comon.wildex.capture
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.util.Log
 import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -56,7 +58,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.Image
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,6 +101,7 @@ private const val ViewfinderAspectHeight = 4f
 fun CaptureScreen(
     onNavigateToBirdInfo: (speciesId: String) -> Unit,
     modifier: Modifier = Modifier,
+    onAnalyzingChanged: (Boolean) -> Unit = {},
     viewModel: CaptureViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -138,6 +146,14 @@ fun CaptureScreen(
                 PackageManager.PERMISSION_GRANTED
         viewModel.onIntent(CaptureIntent.PermissionResult(granted))
     }
+
+    // 분석 중 상태 변화를 부모에게 전달 — 하단 바 숨김/복구에 사용
+    LaunchedEffect(state.isAnalyzing) {
+        onAnalyzingChanged(state.isAnalyzing)
+    }
+
+    // 분석 중 뒤로가기 차단
+    androidx.activity.compose.BackHandler(enabled = state.isAnalyzing) {}
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -248,6 +264,26 @@ fun CaptureScreen(
         }
     }
 
+    // 촬영 후 정지 프레임 비트맵 — 분석 중에는 라이브 프리뷰 대신 표시
+    var frozenImageBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    LaunchedEffect(state.frozenFrameBytes, state.frozenFrameRotation) {
+        val bytes = state.frozenFrameBytes
+        if (bytes == null) {
+            frozenImageBitmap = null
+            return@LaunchedEffect
+        }
+        frozenImageBitmap = withContext(Dispatchers.Default) {
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?: return@withContext null
+            val rotated = if (state.frozenFrameRotation != 0) {
+                val matrix = Matrix().apply { postRotate(state.frozenFrameRotation.toFloat()) }
+                android.graphics.Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+                    .also { bmp.recycle() }
+            } else bmp
+            rotated.asImageBitmap()
+        }
+    }
+
     val density = LocalDensity.current
     var controlBarHeightPx by remember { mutableIntStateOf(0) }
     val estimatedControlBar = 120.dp
@@ -263,6 +299,15 @@ fun CaptureScreen(
                 factory = { previewView },
                 modifier = Modifier.fillMaxSize(),
             )
+            // 분석 중: 촬영된 정지 프레임으로 라이브 프리뷰를 덮음
+            frozenImageBitmap?.let { bitmap ->
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         } else {
             CapturePermissionPlaceholder(
                 onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },

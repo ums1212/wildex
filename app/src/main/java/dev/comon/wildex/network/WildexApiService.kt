@@ -28,4 +28,10 @@ interface WildexApiService {
     suspend fun identifyBird(
         @Part image: MultipartBody.Part
     ): BirdIdentifyResponseDto
+
+    /** 조류 이름으로 조류 정보를 검색한다. (서버 API 미구현 — placeholder) */
+    @GET("/api/wildex/bird-search/")
+    suspend fun searchBirdByName(
+        @Query("name") name: String
+    ): BirdInfoResponseDto
 }

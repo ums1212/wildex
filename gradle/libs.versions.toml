@@ -23,6 +23,7 @@ supabase = "3.1.4"
 ktor = "3.1.3"
 credentialsPlayServices = "1.5.0"
 googleid = "1.1.1"
+generativeai = "0.9.0"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
@@ -67,6 +68,7 @@ supabase-compose-auth = { module = "io.github.jan-tennert.supabase:compose-auth"
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentialsPlayServices" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+google-generativeai = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "generativeai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

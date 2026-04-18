@@ -31,4 +31,19 @@ class BirdRepository(context: Context) {
         cache.saveBirdInfo(speciesId, detail)
         return detail
     }
+
+    /**
+     * 조류 이름으로 조류 상세 정보를 조회한다.
+     * 1. `bird_info_*` 캐시에서 이름 검색 → 히트 시 즉시 반환
+     * 2. `bird_list_page_*` 캐시에서 speciesId 검색 → 히트 시 [getBirdInfo] 호출
+     * 3. 두 캐시 모두 미스 → [NoSuchElementException] 발생 (서버 검색 API 미구현 — 추후 연결 예정)
+     */
+    suspend fun searchByName(name: String): BirdDetail {
+        cache.searchByName(name)?.let { return it }
+
+        val speciesId = cache.findSpeciesIdByName(name)
+            ?: throw NoSuchElementException(name)
+
+        return getBirdInfo(speciesId)
+    }
 }
