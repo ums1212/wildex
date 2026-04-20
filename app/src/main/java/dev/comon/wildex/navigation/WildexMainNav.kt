@@ -21,7 +21,7 @@ data object WildexJournalTabRoute : WildexMainBottomTabRoute
 data object WildexCaptureTabRoute : WildexMainBottomTabRoute
 
 @Serializable
-data object WildexSearchTabRoute : WildexMainBottomTabRoute
+data object WildexRecordsTabRoute : WildexMainBottomTabRoute
 
 @Serializable
 data object WildexSettingsTabRoute : WildexMainBottomTabRoute
@@ -40,16 +40,16 @@ data class WildexBirdInfoRoute(val speciesId: String)
 @Serializable
 data class WildexCaptureResultRoute(val speciesId: String)
 
-// ── 촬영 기록 화면 (메인 메뉴 홈 진입, bottom tab 아님) ────────────────
+// ── 촬영 기록 상세 화면 ────────────────────────────────────────────────
 @Serializable
-data object WildexRecordsRoute
+data class WildexRecordDetailRoute(val recordId: Long)
 
 fun NavDestination?.wildexSelectedMainBottomTab(): WildexMainBottomTabRoute? {
     if (this == null) return null
     return when {
         hasRoute(WildexJournalTabRoute::class) -> WildexJournalTabRoute
         hasRoute(WildexCaptureTabRoute::class) -> WildexCaptureTabRoute
-        hasRoute(WildexSearchTabRoute::class) -> WildexSearchTabRoute
+        hasRoute(WildexRecordsTabRoute::class) -> WildexRecordsTabRoute
         hasRoute(WildexSettingsTabRoute::class) -> WildexSettingsTabRoute
         else -> null
     }
@@ -72,7 +72,7 @@ fun NavController.navigateToWildexMainBottomTab(tab: WildexMainBottomTabRoute) {
             restoreState = false
         }
         WildexCaptureTabRoute -> navigate(WildexCaptureTabRoute) { wildexMainBottomTabNavOptions() }
-        WildexSearchTabRoute -> navigate(WildexSearchTabRoute) { wildexMainBottomTabNavOptions() }
+        WildexRecordsTabRoute -> navigate(WildexRecordsTabRoute) { wildexMainBottomTabNavOptions() }
         WildexSettingsTabRoute -> navigate(WildexSettingsTabRoute) { wildexMainBottomTabNavOptions() }
     }
 }

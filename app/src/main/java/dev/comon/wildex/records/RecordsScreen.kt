@@ -49,11 +49,18 @@ import dev.comon.wildex.ui.theme.WildexTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecordsScreen(
     modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    onRecordClick: (Long) -> Unit = {},
     viewModel: RecordsViewModel = viewModel(),
 ) {
     val lazyItems = viewModel.records.collectAsLazyPagingItems()
@@ -93,7 +100,12 @@ fun RecordsScreen(
                     ) { index ->
                         val record = lazyItems[index]
                         if (record != null) {
-                            RecordsCard(record = record)
+                            RecordsCard(
+                                record = record,
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                onClick = { onRecordClick(record.id) },
+                            )
                         }
                     }
                     when (lazyItems.loadState.append) {
@@ -127,10 +139,13 @@ fun RecordsScreen(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun RecordsCard(
     record: CaptureRecordEntity,
     modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onClick: () -> Unit = {},
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -168,6 +183,14 @@ private fun RecordsCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // 썸네일
+            val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedElement(
+                        sharedContentState = rememberSharedContentState(key = "record_image_${record.id}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
+                }
+            } else Modifier
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -179,7 +202,7 @@ private fun RecordsCard(
                     model = record.imageUri,
                     contentDescription = record.name ?: "미확인",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().then(sharedImageMod),
                 ) {
                     when (painter.state) {
                         is AsyncImagePainter.State.Loading -> {
@@ -348,6 +371,7 @@ private fun RecordsAppendError(
 private fun formatTimestamp(millis: Long): String =
     SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault()).format(Date(millis))
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Preview(showBackground = true, widthDp = 360)
 @Composable
 private fun RecordsCardPreview() {

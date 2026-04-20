@@ -57,6 +57,13 @@ class CaptureRecordRepository(context: Context) {
             .onFailure { Log.e(TAG, "updateRecognition 실패", it) }
     }
 
+    fun observeRecord(id: Long): Flow<CaptureRecordEntity?> = dao.observeById(id)
+
+    suspend fun deleteRecord(id: Long) = withContext(Dispatchers.IO) {
+        runCatching { dao.deleteById(id) }
+            .onFailure { Log.e(TAG, "deleteRecord 실패", it) }
+    }
+
     fun recordsPager(pageSize: Int = 10): Flow<PagingData<CaptureRecordEntity>> =
         Pager(
             config = PagingConfig(

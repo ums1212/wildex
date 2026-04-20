@@ -19,4 +19,10 @@ interface CaptureRecordDao {
 
     @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
     fun pagingSource(): PagingSource<Int, CaptureRecordEntity>
+
+    @Query("SELECT * FROM capture_record WHERE id = :id")
+    fun observeById(id: Long): Flow<CaptureRecordEntity?>
+
+    @Query("DELETE FROM capture_record WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

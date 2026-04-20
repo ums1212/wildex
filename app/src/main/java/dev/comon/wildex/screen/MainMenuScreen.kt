@@ -45,7 +45,6 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -96,17 +95,19 @@ import dev.comon.wildex.navigation.WildexCaptureTabRoute
 import dev.comon.wildex.navigation.WildexJournalTabRoute
 import dev.comon.wildex.navigation.WildexMainBottomTabRoute
 import dev.comon.wildex.navigation.WildexMainMenuRoute
-import dev.comon.wildex.navigation.WildexSearchTabRoute
+import dev.comon.wildex.navigation.WildexRecordsTabRoute
 import dev.comon.wildex.navigation.WildexSettingsTabRoute
 import dev.comon.wildex.navigation.navigateToWildexMainBottomTab
 import dev.comon.wildex.navigation.wildexSelectedMainBottomTab
-import dev.comon.wildex.ui.WildexMainTabEmptyScreen
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.navigation.toRoute
 import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
-import dev.comon.wildex.navigation.WildexRecordsRoute
+import dev.comon.wildex.navigation.WildexRecordDetailRoute
+import dev.comon.wildex.records.RecordDetailScreen
 import dev.comon.wildex.records.RecordsScreen
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -122,7 +123,7 @@ private data class MainMenuBottomTabUi(
 private val mainMenuBottomTabUiRows: List<MainMenuBottomTabUi> = listOf(
     MainMenuBottomTabUi(WildexJournalTabRoute, Icons.AutoMirrored.Filled.MenuBook, "JOURNAL"),
     MainMenuBottomTabUi(WildexCaptureTabRoute, Icons.Filled.CameraAlt, "CAPTURE"),
-    MainMenuBottomTabUi(WildexSearchTabRoute, Icons.Filled.Search, "SEARCH"),
+    MainMenuBottomTabUi(WildexRecordsTabRoute, Icons.Filled.PhotoLibrary, "RECORDS"),
     MainMenuBottomTabUi(WildexSettingsTabRoute, Icons.Filled.Settings, "SETTINGS"),
 )
 
@@ -132,7 +133,7 @@ private val MainMenuBottomBarHeight = 72.dp
 private fun WildexMainBottomTabRoute.mainMenuTabLabel(): String =
     mainMenuBottomTabUiRows.first { it.route == this }.label
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainMenuScreen(
     isLoggedIn: Boolean,
@@ -154,7 +155,7 @@ fun MainMenuScreen(
     val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
     val currentDestination = navBackStackEntry?.destination
     val isAtHome = currentDestination?.hasRoute<WildexMainMenuRoute>() == true
-    val isAtRecords = currentDestination?.hasRoute<WildexRecordsRoute>() == true
+    val isAtRecordDetail = currentDestination?.hasRoute<WildexRecordDetailRoute>() == true
 
     BackHandler(enabled = isAtHome) { showExitDialog = true }
 
@@ -241,9 +242,9 @@ fun MainMenuScreen(
                     .graphicsLayer { translationY = topBarTranslation },
             ) {
                 val showBackButton =
-                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) || isAtRecords
+                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) || isAtRecordDetail
                 val backOnClick: () -> Unit = when {
-                    isAtRecords -> { { navController.popBackStack() } }
+                    isAtRecordDetail -> { { navController.popBackStack() } }
                     else -> journalOnBack
                 }
                 Row(
@@ -382,12 +383,15 @@ fun MainMenuScreen(
             (bottomBarHeightPx.toFloat() - bottomBarTranslation).coerceAtLeast(navBarPx).toDp()
         }
 
-        NavHost(
-            navController = navController,
-            startDestination = WildexMainMenuRoute,
+        SharedTransitionLayout(
             modifier = contentAnimModifier
                 .padding(top = contentTopPadding, bottom = contentBottomPadding)
                 .fillMaxSize(),
+        ) {
+        NavHost(
+            navController = navController,
+            startDestination = WildexMainMenuRoute,
+            modifier = Modifier.fillMaxSize(),
         ) {
             composable<WildexMainMenuRoute>(
                 enterTransition = {
@@ -426,7 +430,7 @@ fun MainMenuScreen(
                         navController.navigateToWildexMainBottomTab(WildexSettingsTabRoute)
                     },
                     onRecordsClick = {
-                        navController.navigate(WildexRecordsRoute)
+                        navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
                     },
                 )
             }
@@ -528,7 +532,7 @@ fun MainMenuScreen(
                 val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
                 CaptureResultScreen(speciesId = route.speciesId)
             }
-            composable<WildexRecordsRoute>(
+            composable<WildexRecordsTabRoute>(
                 enterTransition = {
                     slideInHorizontally(
                         initialOffsetX = { it },
@@ -554,37 +558,44 @@ fun MainMenuScreen(
                     )
                 },
             ) {
-                RecordsScreen()
+                RecordsScreen(
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    onRecordClick = { id -> navController.navigate(WildexRecordDetailRoute(id)) },
+                )
             }
-            composable<WildexSearchTabRoute>(
+            composable<WildexRecordDetailRoute>(
                 enterTransition = {
-                    slideInVertically(
-                        initialOffsetY = { -it },
+                    slideInHorizontally(
+                        initialOffsetX = { it },
                         animationSpec = tween(500, easing = FastOutSlowInEasing),
                     )
                 },
                 exitTransition = {
-                    slideOutVertically(
-                        targetOffsetY = { -it },
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
                         animationSpec = tween(500, easing = FastOutSlowInEasing),
                     )
                 },
                 popEnterTransition = {
-                    slideInVertically(
-                        initialOffsetY = { -it },
+                    slideInHorizontally(
+                        initialOffsetX = { it },
                         animationSpec = tween(500, easing = FastOutSlowInEasing),
                     )
                 },
                 popExitTransition = {
-                    slideOutVertically(
-                        targetOffsetY = { -it },
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
                         animationSpec = tween(500, easing = FastOutSlowInEasing),
                     )
                 },
-            ) {
-                WildexMainTabEmptyScreen(
-                    title = WildexSearchTabRoute.mainMenuTabLabel(),
-                    bodyText = "검색 화면입니다. 콘텐츠는 추후 연결됩니다.",
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<WildexRecordDetailRoute>()
+                RecordDetailScreen(
+                    recordId = route.recordId,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    onDeleted = { navController.popBackStack() },
                 )
             }
             composable<WildexSettingsTabRoute>(
@@ -616,6 +627,7 @@ fun MainMenuScreen(
                 SettingsScreen()
             }
         }
+        } // SharedTransitionLayout
     }
 }
 
