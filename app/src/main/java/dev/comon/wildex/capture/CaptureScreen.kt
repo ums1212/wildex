@@ -43,9 +43,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -433,22 +436,30 @@ fun CaptureScreen(
             }
         }
 
-        CaptureControlPanel(
-            flashOn = state.flashOn,
-            onFlashOn = { viewModel.onIntent(CaptureIntent.FlashOn) },
-            onFlashOff = { viewModel.onIntent(CaptureIntent.FlashOff) },
-            onZoomIn = { viewModel.onIntent(CaptureIntent.ZoomIn) },
-            onZoomOut = { viewModel.onIntent(CaptureIntent.ZoomOut) },
-            onCapture = { viewModel.onIntent(CaptureIntent.CaptureClicked) },
+        AnimatedVisibility(
+            visible = state.hasCameraPermission,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = WildexDimens.gridMajor)
-                .padding(bottom = WildexDimens.gridStep * 2)
-                .onGloballyPositioned { coords ->
-                    controlBarHeightPx = coords.size.height
-                },
-        )
+                .fillMaxWidth(),
+        ) {
+            CaptureControlPanel(
+                flashOn = state.flashOn,
+                onFlashOn = { viewModel.onIntent(CaptureIntent.FlashOn) },
+                onFlashOff = { viewModel.onIntent(CaptureIntent.FlashOff) },
+                onZoomIn = { viewModel.onIntent(CaptureIntent.ZoomIn) },
+                onZoomOut = { viewModel.onIntent(CaptureIntent.ZoomOut) },
+                onCapture = { viewModel.onIntent(CaptureIntent.CaptureClicked) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = WildexDimens.gridMajor)
+                    .padding(bottom = WildexDimens.gridStep * 2)
+                    .onGloballyPositioned { coords ->
+                        controlBarHeightPx = coords.size.height
+                    },
+            )
+        }
 
         // 분석 중 로딩 오버레이 — 모든 터치 이벤트 차단
         if (state.isAnalyzing) {
