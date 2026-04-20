@@ -3,7 +3,7 @@ package dev.comon.wildex.capture
 /** 조류 이미지 인식 과정의 단계별 상태 (AI SDK 종류에 무관) */
 sealed interface BirdRecognitionState {
     data object Analyzing : BirdRecognitionState
-    data class Recognized(val birdName: String) : BirdRecognitionState
+    data class Recognized(val birdName: String, val category: String) : BirdRecognitionState
     data class Error(val error: BirdRecognitionError) : BirdRecognitionState
 }
 

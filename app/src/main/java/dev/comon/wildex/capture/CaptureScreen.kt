@@ -2,7 +2,10 @@ package dev.comon.wildex.capture
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Log
@@ -61,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.ContentScale
@@ -81,7 +85,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -90,6 +97,7 @@ import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import androidx.core.content.edit
 
 private const val TagCapture = "WildexCapture"
 
@@ -133,18 +141,69 @@ fun CaptureScreen(
 
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
 
+    // 카메라 권한이 영구 거절된 경우 — 설정 화면으로 안내
+    var cameraPermissionPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            viewModel.onIntent(CaptureIntent.PermissionResult(granted))
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val cameraGranted = permissions[Manifest.permission.CAMERA] == true
+            viewModel.onIntent(CaptureIntent.PermissionResult(cameraGranted))
+            viewModel.onIntent(
+                CaptureIntent.LocationPermissionResult(
+                    permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true,
+                ),
+            )
+            if (!cameraGranted) {
+                // shouldShowRationale이 false이면 두 번 이상 거절(or "다시 묻지 않음") → 설정 이동 필요
+                val showRationale = ActivityCompat.shouldShowRequestPermissionRationale(
+                    context as android.app.Activity,
+                    Manifest.permission.CAMERA,
+                )
+                if (!showRationale) cameraPermissionPermanentlyDenied = true
+            }
         },
     )
 
     LaunchedEffect(Unit) {
-        val granted =
+        val cameraGranted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
                 PackageManager.PERMISSION_GRANTED
-        viewModel.onIntent(CaptureIntent.PermissionResult(granted))
+        viewModel.onIntent(CaptureIntent.PermissionResult(cameraGranted))
+
+        if (!cameraGranted) {
+            val prefs = context.getSharedPreferences("capture_prefs", Context.MODE_PRIVATE)
+            val everRequested = prefs.getBoolean("camera_perm_ever_requested", false)
+            val showRationale = ActivityCompat.shouldShowRequestPermissionRationale(
+                context as android.app.Activity,
+                Manifest.permission.CAMERA,
+            )
+            // 요청 이력이 있고 rationale도 없으면 → 영구 거절 상태
+            if (everRequested && !showRationale) cameraPermissionPermanentlyDenied = true
+        }
+
+        val locationGranted =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        viewModel.onIntent(CaptureIntent.LocationPermissionResult(locationGranted))
+    }
+
+    // 설정 화면에서 돌아왔을 때 권한 상태 재확인
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.CAMERA,
+                ) == PackageManager.PERMISSION_GRANTED
+                viewModel.onIntent(CaptureIntent.PermissionResult(granted))
+                if (granted) cameraPermissionPermanentlyDenied = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // 분석 중 상태 변화를 부모에게 전달 — 하단 바 숨김/복구에 사용
@@ -310,7 +369,31 @@ fun CaptureScreen(
             }
         } else {
             CapturePermissionPlaceholder(
-                onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                isPermanentlyDenied = cameraPermissionPermanentlyDenied,
+                onAction = if (cameraPermissionPermanentlyDenied) {
+                    {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            },
+                        )
+                    }
+                } else {
+                    {
+                        context.getSharedPreferences("capture_prefs", Context.MODE_PRIVATE)
+                            .edit { putBoolean("camera_perm_ever_requested", true) }
+                        permissionLauncher.launch(
+                            buildList {
+                                add(Manifest.permission.CAMERA)
+                                add(Manifest.permission.ACCESS_FINE_LOCATION)
+                                add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                }
+                            }.toTypedArray(),
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -434,17 +517,22 @@ private fun CaptureScreenDotGrid(
 
 @Composable
 private fun CapturePermissionPlaceholder(
-    onRequestPermission: () -> Unit,
+    onAction: () -> Unit,
+    isPermanentlyDenied: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .background(WildexPalette.NightVoid, RectangleShape)
-            .clickable(onClick = onRequestPermission),
+            .clickable(onClick = onAction),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "카메라 권한이 필요합니다.\n탭하여 허용",
+            text = if (isPermanentlyDenied) {
+                "카메라 권한이 거절되었습니다.\n탭하여 설정에서 허용"
+            } else {
+                "카메라 권한이 필요합니다.\n탭하여 허용"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = WildexPalette.Neutral,
             textAlign = TextAlign.Center,

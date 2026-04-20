@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import dev.comon.wildex.data.BirdImageAnalyzer
 import dev.comon.wildex.data.BirdRepository
 import dev.comon.wildex.data.GeminiBirdImageAnalyzer
+import dev.comon.wildex.data.capture.CaptureRecordRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +25,7 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
 
     private val birdImageAnalyzer: BirdImageAnalyzer = GeminiBirdImageAnalyzer()
     private val birdRepository: BirdRepository = BirdRepository(application)
+    private val captureRecordRepository: CaptureRecordRepository = CaptureRecordRepository(application)
 
     private val _state = MutableStateFlow(CaptureUiState())
     val state: StateFlow<CaptureUiState> = _state.asStateFlow()
@@ -41,6 +44,9 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         when (intent) {
             is CaptureIntent.PermissionResult ->
                 _state.update { it.copy(hasCameraPermission = intent.granted) }
+
+            is CaptureIntent.LocationPermissionResult ->
+                _state.update { it.copy(hasLocationPermission = intent.granted) }
 
             CaptureIntent.FlashOn -> _state.update { it.copy(flashOn = true) }
             CaptureIntent.FlashOff -> _state.update { it.copy(flashOn = false) }
@@ -86,6 +92,14 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             is CaptureIntent.CaptureSucceeded -> {
                 isCaptureInProgress = false
                 viewModelScope.launch {
+                    val hasLocationPerm = _state.value.hasLocationPermission
+                    val saveDeferred = async {
+                        captureRecordRepository.saveCapture(
+                            imageBytes = intent.imageBytes,
+                            rotationDegrees = intent.rotationDegrees,
+                            hasLocationPermission = hasLocationPerm,
+                        )
+                    }
                     birdImageAnalyzer.recognizeBird(intent.imageBytes, intent.rotationDegrees)
                         .catch { e ->
                             emit(BirdRecognitionState.Error(mapToRecognitionError(e)))
@@ -102,7 +116,14 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                                     }
                                 }
                                 is BirdRecognitionState.Recognized -> {
-                                    searchBirdAndNavigate(recognitionState.birdName)
+                                    val name = recognitionState.birdName
+                                    val category = recognitionState.category
+                                    viewModelScope.launch {
+                                        saveDeferred.await()?.let { id ->
+                                            captureRecordRepository.updateRecognition(id, name, category)
+                                        }
+                                    }
+                                    searchBirdAndNavigate(name)
                                 }
                                 is BirdRecognitionState.Error -> {
                                     _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }

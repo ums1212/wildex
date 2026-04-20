@@ -3,6 +3,7 @@ package dev.comon.wildex.capture
 /** Capture 화면 MVI 계약: UI 상태는 StateFlow, 일회성 피드백은 Channel(→ Flow)로 전달합니다. */
 data class CaptureUiState(
     val hasCameraPermission: Boolean = false,
+    val hasLocationPermission: Boolean = false,
     val flashOn: Boolean = false,
     val zoomRatio: Float = 1f,
     val zoomMin: Float = 1f,
@@ -22,6 +23,7 @@ data class CaptureUiState(
         other as CaptureUiState
 
         if (hasCameraPermission != other.hasCameraPermission) return false
+        if (hasLocationPermission != other.hasLocationPermission) return false
         if (flashOn != other.flashOn) return false
         if (zoomRatio != other.zoomRatio) return false
         if (zoomMin != other.zoomMin) return false
@@ -37,6 +39,7 @@ data class CaptureUiState(
 
     override fun hashCode(): Int {
         var result = hasCameraPermission.hashCode()
+        result = 31 * result + hasLocationPermission.hashCode()
         result = 31 * result + flashOn.hashCode()
         result = 31 * result + zoomRatio.hashCode()
         result = 31 * result + zoomMin.hashCode()
@@ -53,6 +56,7 @@ data class CaptureUiState(
 /** 사용자 액션·카메라 계층에서 VM으로 보내는 입력 */
 sealed interface CaptureIntent {
     data class PermissionResult(val granted: Boolean) : CaptureIntent
+    data class LocationPermissionResult(val granted: Boolean) : CaptureIntent
     data object FlashOn : CaptureIntent
     data object FlashOff : CaptureIntent
     data object ZoomIn : CaptureIntent

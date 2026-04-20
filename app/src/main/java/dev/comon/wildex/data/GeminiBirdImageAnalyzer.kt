@@ -74,8 +74,12 @@ class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
                 return@flow
             }
 
-            Log.d(TAG, "인식 성공 → birdName=$birdName")
-            emit(BirdRecognitionState.Recognized(birdName))
+            val categoryMatch = Regex("\"category\"\\s*:\\s*\"([^\"]+)\"").find(json)
+            val category = categoryMatch?.groupValues?.getOrNull(1)?.trim()
+                ?.ifBlank { null } ?: "조류"
+
+            Log.d(TAG, "인식 성공 → birdName=$birdName, category=$category")
+            emit(BirdRecognitionState.Recognized(birdName, category))
         } catch (e: Exception) {
             bitmap.recycle()
             val error = mapException(e)
@@ -113,7 +117,7 @@ class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
 반드시 아래 JSON 형식으로만 응답하세요. 마크다운이나 다른 텍스트는 포함하지 마세요.
 
 조류가 있는 경우:
-{"found": true, "koreanName": "조류의 한국어 이름"}
+{"found": true, "koreanName": "조류의 한국어 이름", "category": "조류"}
 
 조류가 없는 경우:
 {"found": false}
