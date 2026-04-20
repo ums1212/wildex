@@ -2,7 +2,11 @@ package dev.comon.wildex.data.capture
 
 import android.content.Context
 import android.util.Log
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 private const val TAG = "CaptureRecordRepo"
@@ -52,4 +56,14 @@ class CaptureRecordRepository(context: Context) {
         runCatching { dao.updateRecognition(id, name, category) }
             .onFailure { Log.e(TAG, "updateRecognition 실패", it) }
     }
+
+    fun recordsPager(pageSize: Int = 10): Flow<PagingData<CaptureRecordEntity>> =
+        Pager(
+            config = PagingConfig(
+                pageSize = pageSize,
+                initialLoadSize = pageSize,
+                enablePlaceholders = false,
+            ),
+            pagingSourceFactory = { dao.pagingSource() },
+        ).flow
 }

@@ -40,6 +40,10 @@ data class WildexBirdInfoRoute(val speciesId: String)
 @Serializable
 data class WildexCaptureResultRoute(val speciesId: String)
 
+// ── 촬영 기록 화면 (메인 메뉴 홈 진입, bottom tab 아님) ────────────────
+@Serializable
+data object WildexRecordsRoute
+
 fun NavDestination?.wildexSelectedMainBottomTab(): WildexMainBottomTabRoute? {
     if (this == null) return null
     return when {

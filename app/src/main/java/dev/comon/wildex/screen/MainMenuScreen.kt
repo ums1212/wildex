@@ -44,6 +44,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -104,6 +106,8 @@ import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
+import dev.comon.wildex.navigation.WildexRecordsRoute
+import dev.comon.wildex.records.RecordsScreen
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -148,8 +152,11 @@ fun MainMenuScreen(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
+    val currentDestination = navBackStackEntry?.destination
+    val isAtHome = currentDestination?.hasRoute<WildexMainMenuRoute>() == true
+    val isAtRecords = currentDestination?.hasRoute<WildexRecordsRoute>() == true
 
-    BackHandler(enabled = selectedBottomTab == null) { showExitDialog = true }
+    BackHandler(enabled = isAtHome) { showExitDialog = true }
 
     if (showExitDialog) {
         WildexLogoutConfirmDialog(
@@ -233,7 +240,12 @@ fun MainMenuScreen(
                     .onGloballyPositioned { topBarHeightPx = it.size.height }
                     .graphicsLayer { translationY = topBarTranslation },
             ) {
-                val showBackButton = selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack
+                val showBackButton =
+                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) || isAtRecords
+                val backOnClick: () -> Unit = when {
+                    isAtRecords -> { { navController.popBackStack() } }
+                    else -> journalOnBack
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -243,7 +255,7 @@ fun MainMenuScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (showBackButton) {
-                        MainMenuTopBarBackButton(onClick = journalOnBack)
+                        MainMenuTopBarBackButton(onClick = backOnClick)
                     } else {
                         MainMenuTopBarDpadIcon()
                     }
@@ -413,6 +425,9 @@ fun MainMenuScreen(
                     onSettingsClick = {
                         navController.navigateToWildexMainBottomTab(WildexSettingsTabRoute)
                     },
+                    onRecordsClick = {
+                        navController.navigate(WildexRecordsRoute)
+                    },
                 )
             }
             composable<WildexJournalTabRoute>(
@@ -513,6 +528,34 @@ fun MainMenuScreen(
                 val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
                 CaptureResultScreen(speciesId = route.speciesId)
             }
+            composable<WildexRecordsRoute>(
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
+                RecordsScreen()
+            }
             composable<WildexSearchTabRoute>(
                 enterTransition = {
                     slideInVertically(
@@ -581,6 +624,7 @@ private fun MainMenuHomeContent(
     onCaptureClick: () -> Unit,
     onJournalClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onRecordsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -626,6 +670,14 @@ private fun MainMenuHomeContent(
                 style = WildexMenuButtonStyle.Secondary,
             )
         }
+        WildexMenuButton(
+            titleText = "Records",
+            subtitleText = "Capture history",
+            imageVector = Icons.Filled.PhotoLibrary,
+            onClick = onRecordsClick,
+            modifier = Modifier.fillMaxWidth(),
+            style = WildexMenuButtonStyle.Secondary,
+        )
         Spacer(modifier = Modifier.weight(1f))
     }
 }

@@ -1,5 +1,6 @@
 package dev.comon.wildex.data.capture
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
@@ -15,4 +16,7 @@ interface CaptureRecordDao {
 
     @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
     fun observeAll(): Flow<List<CaptureRecordEntity>>
+
+    @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
+    fun pagingSource(): PagingSource<Int, CaptureRecordEntity>
 }
