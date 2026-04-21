@@ -13,4 +13,5 @@ data class CaptureRecordEntity(
     val address: String,
     val name: String? = null,
     val category: String? = null,
+    val memo: String? = null,
 )

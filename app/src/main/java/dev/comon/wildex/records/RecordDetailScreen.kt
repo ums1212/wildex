@@ -3,6 +3,7 @@ package dev.comon.wildex.records
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -92,6 +95,7 @@ fun RecordDetailScreen(
         },
     )
     val record by viewModel.record.collectAsStateWithLifecycle()
+    val memoInput by viewModel.memoInput.collectAsStateWithLifecycle()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -115,6 +119,8 @@ fun RecordDetailScreen(
             }
             else -> RecordDetailContent(
                 record = record!!,
+                memo = memoInput ?: "",
+                onMemoChange = viewModel::onMemoChange,
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 onDeleteClick = { showDeleteDialog = true },
@@ -128,6 +134,8 @@ fun RecordDetailScreen(
 @Composable
 private fun RecordDetailContent(
     record: CaptureRecordEntity,
+    memo: String,
+    onMemoChange: (String) -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onDeleteClick: () -> Unit,
@@ -230,6 +238,14 @@ private fun RecordDetailContent(
 
         Spacer(modifier = Modifier.height(WildexDimens.gridMajor))
 
+        MemoCard(
+            memo = memo,
+            onMemoChange = onMemoChange,
+            modifier = Modifier.padding(horizontal = WildexDimens.gridMajor),
+        )
+
+        Spacer(modifier = Modifier.height(WildexDimens.gridMajor))
+
         // 삭제 버튼 (오른쪽 정렬)
         Row(
             modifier = Modifier
@@ -323,6 +339,77 @@ private fun RecordDivider() {
         thickness = WildexDimens.borderStrokeChunky,
     )
 }
+
+@Composable
+private fun MemoCard(
+    memo: String,
+    onMemoChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val depth = WildexDimens.shadowOffsetHard
+    Box(modifier = modifier.padding(end = depth, bottom = depth)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(depth, depth)
+                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                .padding(horizontal = WildexDimens.gridMajor, vertical = 12.dp),
+        ) {
+            Text(
+                text = "MEMO",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                ),
+                color = WildexColorRoles.missionCtaBackground(),
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            BasicTextField(
+                value = memo,
+                onValueChange = onMemoChange,
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp),
+            ) { innerTextField ->
+                Box {
+                    if (memo.isEmpty()) {
+                        Text(
+                            text = "메모를 입력하세요",
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Text(
+                    text = "${memo.length} / $MEMO_MAX_LENGTH",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = if (memo.length >= MEMO_MAX_LENGTH) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private const val MEMO_MAX_LENGTH = 500
 
 private fun formatDetailTimestamp(millis: Long): String =
     SimpleDateFormat("yyyy.MM.dd HH:mm:ss", Locale.getDefault()).format(Date(millis))

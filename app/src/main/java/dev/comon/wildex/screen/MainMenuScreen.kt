@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
@@ -106,8 +107,6 @@ import dev.comon.wildex.capture.CaptureResultScreen
 import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
-import dev.comon.wildex.navigation.WildexRecordDetailRoute
-import dev.comon.wildex.records.RecordDetailScreen
 import dev.comon.wildex.records.RecordsScreen
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -155,8 +154,6 @@ fun MainMenuScreen(
     val selectedBottomTab = navBackStackEntry?.destination.wildexSelectedMainBottomTab()
     val currentDestination = navBackStackEntry?.destination
     val isAtHome = currentDestination?.hasRoute<WildexMainMenuRoute>() == true
-    val isAtRecordDetail = currentDestination?.hasRoute<WildexRecordDetailRoute>() == true
-
     BackHandler(enabled = isAtHome) { showExitDialog = true }
 
     if (showExitDialog) {
@@ -170,9 +167,11 @@ fun MainMenuScreen(
         )
     }
 
-    // Journal 탭 내부 하위 화면(BirdList/BirdInfo)의 뒤로가기 상태
+    // Journal / Records 탭 내부 NavHost의 뒤로가기 상태
     var journalCanNavigateBack by remember { mutableStateOf(false) }
     var journalOnBack: () -> Unit by remember { mutableStateOf({}) }
+    var recordsCanNavigateBack by remember { mutableStateOf(false) }
+    var recordsOnBack: () -> Unit by remember { mutableStateOf({}) }
 
     // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
     var barsVisible by remember { mutableStateOf(true) }
@@ -195,14 +194,20 @@ fun MainMenuScreen(
         if (!journalCanNavigateBack) barsVisible = true
     }
 
-    LaunchedEffect(selectedBottomTab) {
-        if (selectedBottomTab != WildexCaptureTabRoute) captureAnalyzing = false
+    LaunchedEffect(recordsCanNavigateBack) {
+        if (!recordsCanNavigateBack) barsVisible = true
     }
 
+    LaunchedEffect(selectedBottomTab) {
+        if (selectedBottomTab != WildexCaptureTabRoute) captureAnalyzing = false
+        if (selectedBottomTab != WildexRecordsTabRoute) barsVisible = true
+    }
+
+    val selectedBottomTabRef = rememberUpdatedState(selectedBottomTab)
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (journalCanNavigateBack) {
+                if (journalCanNavigateBack || selectedBottomTabRef.value == WildexRecordsTabRoute) {
                     if (available.y < -3f) barsVisible = false
                     else if (available.y > 3f) barsVisible = true
                 }
@@ -242,9 +247,10 @@ fun MainMenuScreen(
                     .graphicsLayer { translationY = topBarTranslation },
             ) {
                 val showBackButton =
-                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) || isAtRecordDetail
+                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) ||
+                    (selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack)
                 val backOnClick: () -> Unit = when {
-                    isAtRecordDetail -> { { navController.popBackStack() } }
+                    selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack -> recordsOnBack
                     else -> journalOnBack
                 }
                 Row(
@@ -559,43 +565,10 @@ fun MainMenuScreen(
                 },
             ) {
                 RecordsScreen(
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                    onRecordClick = { id -> navController.navigate(WildexRecordDetailRoute(id)) },
-                )
-            }
-            composable<WildexRecordDetailRoute>(
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                exitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                popEnterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-                popExitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    )
-                },
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<WildexRecordDetailRoute>()
-                RecordDetailScreen(
-                    recordId = route.recordId,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                    onDeleted = { navController.popBackStack() },
+                    onBackNavigationState = { canNavigateBack, onBack ->
+                        recordsCanNavigateBack = canNavigateBack
+                        recordsOnBack = onBack
+                    },
                 )
             }
             composable<WildexSettingsTabRoute>(

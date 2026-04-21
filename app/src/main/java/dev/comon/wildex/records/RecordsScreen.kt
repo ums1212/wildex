@@ -1,5 +1,11 @@
 package dev.comon.wildex.records
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,12 +44,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import dev.comon.wildex.data.capture.CaptureRecordEntity
+import dev.comon.wildex.navigation.WildexRecordDetailRoute
+import dev.comon.wildex.navigation.WildexRecordsListRoute
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -50,22 +64,69 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecordsScreen(
     modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
+    onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
+) {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val canNavigateBack = backStackEntry != null && navController.previousBackStackEntry != null
+
+    SideEffect {
+        onBackNavigationState(canNavigateBack) { navController.popBackStack() }
+    }
+
+    SharedTransitionLayout(modifier = modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = WildexRecordsListRoute,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            composable<WildexRecordsListRoute>(
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+            ) {
+                RecordsListContent(
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    onRecordClick = { id -> navController.navigate(WildexRecordDetailRoute(id)) },
+                )
+            }
+            composable<WildexRecordDetailRoute>(
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) },
+            ) { entry ->
+                val route = entry.toRoute<WildexRecordDetailRoute>()
+                RecordDetailScreen(
+                    recordId = route.recordId,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    onDeleted = { navController.popBackStack() },
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun RecordsListContent(
+    sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onRecordClick: (Long) -> Unit = {},
     viewModel: RecordsViewModel = viewModel(),
 ) {
     val lazyItems = viewModel.records.collectAsLazyPagingItems()
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         when {
             lazyItems.loadState.refresh is LoadState.Loading && lazyItems.itemCount == 0 -> {
                 CircularProgressIndicator(
@@ -144,7 +205,7 @@ fun RecordsScreen(
 private fun RecordsCard(
     record: CaptureRecordEntity,
     modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
+    sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onClick: () -> Unit = {},
 ) {

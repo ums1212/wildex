@@ -57,6 +57,11 @@ class CaptureRecordRepository(context: Context) {
             .onFailure { Log.e(TAG, "updateRecognition 실패", it) }
     }
 
+    suspend fun updateMemo(id: Long, memo: String?) = withContext(Dispatchers.IO) {
+        runCatching { dao.updateMemo(id, memo?.takeIf { it.isNotBlank() }) }
+            .onFailure { Log.e(TAG, "updateMemo 실패", it) }
+    }
+
     fun observeRecord(id: Long): Flow<CaptureRecordEntity?> = dao.observeById(id)
 
     suspend fun deleteRecord(id: Long) = withContext(Dispatchers.IO) {

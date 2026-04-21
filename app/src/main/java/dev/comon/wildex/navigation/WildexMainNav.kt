@@ -40,7 +40,10 @@ data class WildexBirdInfoRoute(val speciesId: String)
 @Serializable
 data class WildexCaptureResultRoute(val speciesId: String)
 
-// ── 촬영 기록 상세 화면 ────────────────────────────────────────────────
+// ── Records 탭 내부 Nested NavHost 라우트 ─────────────────────────────
+@Serializable
+data object WildexRecordsListRoute
+
 @Serializable
 data class WildexRecordDetailRoute(val recordId: Long)
 

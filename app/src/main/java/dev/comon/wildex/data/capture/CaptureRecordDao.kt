@@ -14,6 +14,9 @@ interface CaptureRecordDao {
     @Query("UPDATE capture_record SET name = :name, category = :category WHERE id = :id")
     suspend fun updateRecognition(id: Long, name: String, category: String)
 
+    @Query("UPDATE capture_record SET memo = :memo WHERE id = :id")
+    suspend fun updateMemo(id: Long, memo: String?)
+
     @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
     fun observeAll(): Flow<List<CaptureRecordEntity>>
 
