@@ -34,8 +34,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -86,6 +88,8 @@ import dev.comon.wildex.ui.theme.WildexTheme
 fun BirdInfoScreen(
     speciesId: String,
     modifier: Modifier = Modifier,
+    savedRecordId: Long? = null,
+    onNavigateToRecordDetail: (Long) -> Unit = {},
     viewModel: BirdInfoViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -118,6 +122,19 @@ fun BirdInfoScreen(
                     scope.launch { snackbarHostState.showSnackbar(event.message) }
                 BirdInfoUiEvent.DuckBgm -> bgmManager.setVolume(0.2f)
                 BirdInfoUiEvent.RestoreBgm -> bgmManager.setVolume(1f)
+            }
+        }
+    }
+
+    LaunchedEffect(savedRecordId) {
+        if (savedRecordId != null) {
+            val result = snackbarHostState.showSnackbar(
+                message = "촬영 기록이 저장되었습니다.",
+                actionLabel = "이동",
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                onNavigateToRecordDetail(savedRecordId)
             }
         }
     }

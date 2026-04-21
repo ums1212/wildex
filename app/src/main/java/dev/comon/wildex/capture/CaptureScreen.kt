@@ -110,7 +110,7 @@ private const val ViewfinderAspectHeight = 4f
 
 @Composable
 fun CaptureScreen(
-    onNavigateToBirdInfo: (speciesId: String) -> Unit,
+    onNavigateToBirdInfo: (speciesId: String, recordId: Long?) -> Unit,
     modifier: Modifier = Modifier,
     onAnalyzingChanged: (Boolean) -> Unit = {},
     viewModel: CaptureViewModel = viewModel(),
@@ -255,7 +255,7 @@ fun CaptureScreen(
                     snackbarHostState.showSnackbar(event.message)
                 }
                 is CaptureUiEvent.NavigateToBirdInfo -> {
-                    onNavigateToBirdInfo(event.speciesId)
+                    onNavigateToBirdInfo(event.speciesId, event.recordId)
                 }
             }
         }

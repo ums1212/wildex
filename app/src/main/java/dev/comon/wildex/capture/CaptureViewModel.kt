@@ -118,12 +118,11 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                                 is BirdRecognitionState.Recognized -> {
                                     val name = recognitionState.birdName
                                     val category = recognitionState.category
-                                    viewModelScope.launch {
-                                        saveDeferred.await()?.let { id ->
-                                            captureRecordRepository.updateRecognition(id, name, category)
-                                        }
+                                    val recordId = saveDeferred.await()
+                                    recordId?.let { id ->
+                                        captureRecordRepository.updateRecognition(id, name, category)
                                     }
-                                    searchBirdAndNavigate(name)
+                                    searchBirdAndNavigate(name, recordId)
                                 }
                                 is BirdRecognitionState.Error -> {
                                     _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
@@ -148,11 +147,11 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** 조류 이름 인식 후 DataStore → 검색 API 순으로 speciesId를 조회하여 화면 이동 */
-    private suspend fun searchBirdAndNavigate(birdName: String) {
+    private suspend fun searchBirdAndNavigate(birdName: String, recordId: Long?) {
         runCatching { birdRepository.searchByName(birdName) }
             .onSuccess { speciesId ->
                 _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
-                _events.send(CaptureUiEvent.NavigateToBirdInfo(speciesId))
+                _events.send(CaptureUiEvent.NavigateToBirdInfo(speciesId, recordId))
             }
             .onFailure {
                 _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }

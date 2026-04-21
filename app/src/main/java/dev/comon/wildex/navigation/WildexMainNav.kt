@@ -34,7 +34,7 @@ data object WildexJournalCategoryRoute
 data object WildexBirdListRoute
 
 @Serializable
-data class WildexBirdInfoRoute(val speciesId: String)
+data class WildexBirdInfoRoute(val speciesId: String, val recordId: Long? = null)
 
 // ── Capture 탭 분석 결과 화면 ─────────────────────────────────────────
 @Serializable

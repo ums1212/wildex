@@ -181,6 +181,10 @@ fun MainMenuScreen(
     var captureAnalyzing by remember { mutableStateOf(false) }
     // 캡처 화면에서 인식된 조류 speciesId — Journal로 이동 후 소비됨
     var pendingCaptureSpeciesId by remember { mutableStateOf<String?>(null) }
+    // 캡처 저장된 recordId — BirdInfoScreen 스낵바 표시 후 소비됨
+    var pendingCaptureRecordId by remember { mutableStateOf<Long?>(null) }
+    // BirdInfoScreen "이동" 액션 후 Records 탭으로 점프할 recordId
+    var pendingRecordDetailId by remember { mutableStateOf<Long?>(null) }
     val topBarTranslation by animateFloatAsState(
         targetValue = if (barsVisible && !captureAnalyzing) 0f else -topBarHeightPx.toFloat(),
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -472,7 +476,15 @@ fun MainMenuScreen(
                         journalOnBack = onBack
                     },
                     pendingSpeciesId = pendingCaptureSpeciesId,
-                    onPendingSpeciesIdConsumed = { pendingCaptureSpeciesId = null },
+                    pendingRecordId = pendingCaptureRecordId,
+                    onPendingSpeciesIdConsumed = {
+                        pendingCaptureSpeciesId = null
+                        pendingCaptureRecordId = null
+                    },
+                    onNavigateToRecordDetail = { recordId ->
+                        pendingRecordDetailId = recordId
+                        navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
+                    },
                 )
             }
             composable<WildexCaptureTabRoute>(
@@ -502,8 +514,9 @@ fun MainMenuScreen(
                 },
             ) {
                 CaptureScreen(
-                    onNavigateToBirdInfo = { speciesId ->
+                    onNavigateToBirdInfo = { speciesId, recordId ->
                         pendingCaptureSpeciesId = speciesId
+                        pendingCaptureRecordId = recordId
                         navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
                     },
                     onAnalyzingChanged = { captureAnalyzing = it },
@@ -569,6 +582,8 @@ fun MainMenuScreen(
                         recordsCanNavigateBack = canNavigateBack
                         recordsOnBack = onBack
                     },
+                    pendingRecordId = pendingRecordDetailId,
+                    onPendingRecordIdConsumed = { pendingRecordDetailId = null },
                 )
             }
             composable<WildexSettingsTabRoute>(

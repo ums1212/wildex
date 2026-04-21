@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -71,6 +72,8 @@ import androidx.compose.foundation.clickable
 fun RecordsScreen(
     modifier: Modifier = Modifier,
     onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
+    pendingRecordId: Long? = null,
+    onPendingRecordIdConsumed: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -78,6 +81,14 @@ fun RecordsScreen(
 
     SideEffect {
         onBackNavigationState(canNavigateBack) { navController.popBackStack() }
+    }
+
+    LaunchedEffect(pendingRecordId) {
+        if (pendingRecordId != null) {
+            navController.popBackStack(WildexRecordsListRoute, inclusive = false)
+            navController.navigate(WildexRecordDetailRoute(pendingRecordId))
+            onPendingRecordIdConsumed()
+        }
     }
 
     SharedTransitionLayout(modifier = modifier.fillMaxSize()) {

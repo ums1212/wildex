@@ -56,7 +56,9 @@ fun JournalScreen(
     modifier: Modifier = Modifier,
     onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit, title: String?) -> Unit = { _, _, _ -> },
     pendingSpeciesId: String? = null,
+    pendingRecordId: Long? = null,
     onPendingSpeciesIdConsumed: () -> Unit = {},
+    onNavigateToRecordDetail: (Long) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -76,7 +78,7 @@ fun JournalScreen(
         if (pendingSpeciesId != null) {
             navController.popBackStack(WildexJournalCategoryRoute, inclusive = false)
             navController.navigate(WildexBirdListRoute)
-            navController.navigate(WildexBirdInfoRoute(pendingSpeciesId))
+            navController.navigate(WildexBirdInfoRoute(pendingSpeciesId, pendingRecordId))
             onPendingSpeciesIdConsumed()
         }
     }
@@ -159,6 +161,8 @@ fun JournalScreen(
             val route = backStackEntry.toRoute<WildexBirdInfoRoute>()
             BirdInfoScreen(
                 speciesId = route.speciesId,
+                savedRecordId = route.recordId,
+                onNavigateToRecordDetail = onNavigateToRecordDetail,
             )
         }
     }

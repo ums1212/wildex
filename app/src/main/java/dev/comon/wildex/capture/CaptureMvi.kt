@@ -85,5 +85,5 @@ sealed interface CaptureIntent {
 sealed interface CaptureUiEvent {
     data object TakePicture : CaptureUiEvent
     data class ShowSnackbar(val message: String) : CaptureUiEvent
-    data class NavigateToBirdInfo(val speciesId: String) : CaptureUiEvent
+    data class NavigateToBirdInfo(val speciesId: String, val recordId: Long?) : CaptureUiEvent
 }
