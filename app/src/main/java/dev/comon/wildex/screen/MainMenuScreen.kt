@@ -194,6 +194,11 @@ fun MainMenuScreen(
         targetValue = if (barsVisible && !captureAnalyzing) 0f else bottomBarHeightPx.toFloat(),
         animationSpec = tween(300, easing = FastOutSlowInEasing),
     )
+    val bottomBarEntryProgress by animateFloatAsState(
+        targetValue = if (selectedBottomTab != null) 1f else 0f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "bottomBarEntry",
+    )
 
     LaunchedEffect(journalCanNavigateBack) {
         if (!journalCanNavigateBack) barsVisible = true
@@ -391,11 +396,8 @@ fun MainMenuScreen(
             (topBarHeightPx.toFloat() + topBarTranslation).coerceAtLeast(0f).toDp()
         } + statusBarPadding
         val contentBottomPadding = with(density) {
-            if (selectedBottomTab != null) {
-                (bottomBarHeightPx.toFloat() - bottomBarTranslation).coerceAtLeast(navBarPx).toDp()
-            } else {
-                navBarPx.toDp()
-            }
+            val barHeight = bottomBarHeightPx.toFloat() * bottomBarEntryProgress - bottomBarTranslation
+            barHeight.coerceAtLeast(navBarPx).toDp()
         }
 
         SharedTransitionLayout(
