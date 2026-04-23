@@ -2,6 +2,7 @@ package dev.comon.wildex.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.comon.wildex.component.WildexMenuButton
@@ -60,7 +62,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            WildexMenuButton(
+            ButtonTestScreenMenuButton(
                 titleText = "Capture",
                 subtitleText = "Scan new specimen",
                 imageVector = Icons.Filled.CameraAlt,
@@ -78,7 +80,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                     .height(160.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                WildexMenuButton(
+                ButtonTestScreenMenuButton(
                     titleText = "Collection",
                     subtitleText = "Findings",
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
@@ -92,7 +94,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
                         .fillMaxHeight(),
                     style = WildexMenuButtonStyle.Secondary,
                 )
-                WildexMenuButton(
+                ButtonTestScreenMenuButton(
                     titleText = "Settings",
                     subtitleText = "Configure",
                     imageVector = Icons.Filled.Settings,
@@ -109,6 +111,27 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** ButtonTest 화면 전용 [WildexMenuButton] 래퍼: 데모 디자인용 카트리지 기본 패딩. */
+@Composable
+private fun ButtonTestScreenMenuButton(
+    titleText: String,
+    subtitleText: String,
+    imageVector: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: WildexMenuButtonStyle? = null,
+) {
+    WildexMenuButton(
+        titleText = titleText,
+        subtitleText = subtitleText,
+        imageVector = imageVector,
+        onClick = onClick,
+        modifier = modifier,
+        style = style,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+    )
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)

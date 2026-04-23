@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -197,7 +198,7 @@ private fun JournalCategoryScreen(
         verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
     ) {
         journalCategories.forEach { category ->
-            JournalCategoryButton(
+            JournalScreenMenuButton(
                 item = category,
                 onClick = if (category.enabled && category.titleText == "Birds") onBirdListClick else ({}),
                 modifier = Modifier.fillMaxWidth(),
@@ -206,8 +207,9 @@ private fun JournalCategoryScreen(
     }
 }
 
+/** Journal 카테고리 화면 전용 [WildexMenuButton] 래퍼: 비활성 시 "준비중" 오버레이 + 기본 카트리지 패딩. */
 @Composable
-private fun JournalCategoryButton(
+private fun JournalScreenMenuButton(
     item: JournalCategoryItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -221,6 +223,7 @@ private fun JournalCategoryButton(
             modifier = Modifier.fillMaxWidth(),
             style = WildexMenuButtonStyle.Secondary,
             enabled = item.enabled,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         )
         // 비활성화 항목에 "준비중" 오버레이
         if (!item.enabled) {

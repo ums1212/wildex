@@ -22,6 +22,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -390,7 +391,11 @@ fun MainMenuScreen(
             (topBarHeightPx.toFloat() + topBarTranslation).coerceAtLeast(0f).toDp()
         } + statusBarPadding
         val contentBottomPadding = with(density) {
-            (bottomBarHeightPx.toFloat() - bottomBarTranslation).coerceAtLeast(navBarPx).toDp()
+            if (selectedBottomTab != null) {
+                (bottomBarHeightPx.toFloat() - bottomBarTranslation).coerceAtLeast(navBarPx).toDp()
+            } else {
+                navBarPx.toDp()
+            }
         }
 
         SharedTransitionLayout(
@@ -635,21 +640,25 @@ private fun MainMenuHomeContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         MainMenuSectionLabel()
-        WildexMenuButton(
+        MainMenuScreenMenuButton(
             titleText = "Capture",
             subtitleText = "Scan new specimen",
             imageVector = Icons.Filled.CameraAlt,
             onClick = onCaptureClick,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1.2f)
+                .fillMaxHeight(),
             style = WildexMenuButtonStyle.Primary,
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp),
+                .weight(1f)
+                .fillMaxHeight(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            WildexMenuButton(
+            MainMenuScreenMenuButton(
                 titleText = "Journal",
                 subtitleText = "Daily record",
                 imageVector = Icons.AutoMirrored.Filled.MenuBook,
@@ -659,7 +668,7 @@ private fun MainMenuHomeContent(
                     .fillMaxHeight(),
                 style = WildexMenuButtonStyle.Secondary,
             )
-            WildexMenuButton(
+            MainMenuScreenMenuButton(
                 titleText = "Settings",
                 subtitleText = "Configure",
                 imageVector = Icons.Filled.Settings,
@@ -670,16 +679,39 @@ private fun MainMenuHomeContent(
                 style = WildexMenuButtonStyle.Secondary,
             )
         }
-        WildexMenuButton(
+        MainMenuScreenMenuButton(
             titleText = "Records",
             subtitleText = "Capture history",
             imageVector = Icons.Filled.PhotoLibrary,
             onClick = onRecordsClick,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .fillMaxHeight(),
             style = WildexMenuButtonStyle.Secondary,
         )
-        Spacer(modifier = Modifier.weight(1f))
     }
+}
+
+/** 메인 메뉴 전용 [WildexMenuButton] 래퍼: 작은 단말에서도 한 화면에 모두 보이도록 세로 패딩 0. */
+@Composable
+private fun MainMenuScreenMenuButton(
+    titleText: String,
+    subtitleText: String,
+    imageVector: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: WildexMenuButtonStyle? = null,
+) {
+    WildexMenuButton(
+        titleText = titleText,
+        subtitleText = subtitleText,
+        imageVector = imageVector,
+        onClick = onClick,
+        modifier = modifier,
+        style = style,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+    )
 }
 
 @Composable

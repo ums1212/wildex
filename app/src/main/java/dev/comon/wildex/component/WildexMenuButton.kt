@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -114,6 +115,7 @@ fun WildexMenuButton(
     shadowBlockColor: Color = WildexTheme.extraColors.shadowMass,
     iconContentDescription: String? = null,
     enabled: Boolean = true,
+    contentPadding: PaddingValues,
 ) {
     val colors = if (style != null) {
         wildexMenuButtonColorSet(style)
@@ -140,6 +142,7 @@ fun WildexMenuButton(
         frameColor = colors.frameColor,
         shadowBlockColor = colors.shadowBlockColor,
         enabled = enabled,
+        contentPadding = contentPadding,
         icon = {
             Icon(
                 imageVector = imageVector,
@@ -168,6 +171,7 @@ fun WildexMenuButton(
     shadowBlockColor: Color = WildexTheme.extraColors.shadowMass,
     iconContentDescription: String? = null,
     enabled: Boolean = true,
+    contentPadding: PaddingValues,
 ) {
     val colors = if (style != null) {
         wildexMenuButtonColorSet(style)
@@ -194,6 +198,7 @@ fun WildexMenuButton(
         frameColor = colors.frameColor,
         shadowBlockColor = colors.shadowBlockColor,
         enabled = enabled,
+        contentPadding = contentPadding,
         icon = {
             Icon(
                 painter = painterResource(iconResId),
@@ -343,6 +348,7 @@ private fun WildexMenuButtonImpl(
     frameColor: Color,
     shadowBlockColor: Color,
     enabled: Boolean,
+    contentPadding: PaddingValues,
     icon: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -397,7 +403,7 @@ private fun WildexMenuButtonImpl(
                         role = Role.Button,
                         onClick = onClick,
                     )
-                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                    .padding(contentPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -449,6 +455,7 @@ private fun WildexMenuButtonPreviewGridDark() {
 
 @Composable
 private fun WildexMenuButtonPreviewGridContent() {
+    val previewPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -462,6 +469,7 @@ private fun WildexMenuButtonPreviewGridContent() {
             onClick = {},
             modifier = Modifier.fillMaxWidth(),
             style = WildexMenuButtonStyle.Primary,
+            contentPadding = previewPadding,
         )
         Row(
             modifier = Modifier
@@ -478,6 +486,7 @@ private fun WildexMenuButtonPreviewGridContent() {
                     .weight(1f)
                     .fillMaxHeight(),
                 style = WildexMenuButtonStyle.Secondary,
+                contentPadding = previewPadding,
             )
             WildexMenuButton(
                 titleText = "Settings",
@@ -488,6 +497,7 @@ private fun WildexMenuButtonPreviewGridContent() {
                     .weight(1f)
                     .fillMaxHeight(),
                 style = WildexMenuButtonStyle.Secondary,
+                contentPadding = previewPadding,
             )
         }
     }
