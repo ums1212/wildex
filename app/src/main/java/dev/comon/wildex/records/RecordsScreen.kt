@@ -8,8 +8,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -55,6 +52,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import dev.comon.wildex.component.WildexClickableCard
 import dev.comon.wildex.data.capture.CaptureRecordEntity
 import dev.comon.wildex.navigation.WildexRecordDetailRoute
 import dev.comon.wildex.navigation.WildexRecordsListRoute
@@ -220,100 +218,72 @@ private fun RecordsCard(
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onClick: () -> Unit = {},
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val depth = WildexDimens.shadowOffsetHard
-    val depthPressed = 2.dp
-    val shadowOffset = if (pressed) depthPressed else depth
-    val contentInset = if (pressed) depth - depthPressed else 0.dp
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(end = depth, bottom = depth),
+    WildexClickableCard(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier,
     ) {
+        // 썸네일
+        val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+            with(sharedTransitionScope) {
+                Modifier.sharedElement(
+                    sharedContentState = rememberSharedContentState(key = "record_image_${record.id}"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                )
+            }
+        } else Modifier
         Box(
             modifier = Modifier
-                .matchParentSize()
-                .offset(shadowOffset, shadowOffset)
-                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(contentInset, contentInset)
+                .size(56.dp)
                 .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Button,
-                    onClick = onClick,
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape),
+            contentAlignment = Alignment.Center,
         ) {
-            // 썸네일
-            val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                with(sharedTransitionScope) {
-                    Modifier.sharedElement(
-                        sharedContentState = rememberSharedContentState(key = "record_image_${record.id}"),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                    )
-                }
-            } else Modifier
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape),
-                contentAlignment = Alignment.Center,
+            SubcomposeAsyncImage(
+                model = record.imageUri,
+                contentDescription = record.name ?: "미확인",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().then(sharedImageMod),
             ) {
-                SubcomposeAsyncImage(
-                    model = record.imageUri,
-                    contentDescription = record.name ?: "미확인",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().then(sharedImageMod),
-                ) {
-                    when (painter.state) {
-                        is AsyncImagePainter.State.Loading -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = WildexColorRoles.missionCtaBackground(),
-                            )
-                        }
-                        is AsyncImagePainter.State.Error -> {
-                            Icon(
-                                imageVector = Icons.Filled.BrokenImage,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                        else -> SubcomposeAsyncImageContent()
+                when (painter.state) {
+                    is AsyncImagePainter.State.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = WildexColorRoles.missionCtaBackground(),
+                        )
                     }
+                    is AsyncImagePainter.State.Error -> {
+                        Icon(
+                            imageVector = Icons.Filled.BrokenImage,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    else -> SubcomposeAsyncImageContent()
                 }
             }
-            // 텍스트
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = record.name ?: "미확인",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                Text(
-                    text = formatTimestamp(record.capturedAt),
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+        }
+        // 텍스트
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = record.name ?: "미확인",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = formatTimestamp(record.capturedAt),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
         }
     }
 }

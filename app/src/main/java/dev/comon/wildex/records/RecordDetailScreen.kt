@@ -11,7 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -136,10 +137,10 @@ private fun RecordDetailContent(
     record: CaptureRecordEntity,
     memo: String,
     onMemoChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     var showFullScreen by remember { mutableStateOf(false) }
     var retryKey by remember { mutableIntStateOf(0) }
@@ -263,11 +264,23 @@ private fun RecordDetailContent(
 @Composable
 private fun DeleteButton(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
+    var isVisuallyPressed by remember { mutableStateOf(false) }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> isVisuallyPressed = true
+                is PressInteraction.Release,
+                is PressInteraction.Cancel -> {
+                    delay(150)
+                    isVisuallyPressed = false
+                }
+            }
+        }
+    }
     val depth = WildexDimens.shadowOffsetHard
     val depthPressed = 2.dp
-    val shadowOffset = if (pressed) depthPressed else depth
-    val contentInset = if (pressed) depth - depthPressed else 0.dp
+    val shadowOffset = if (isVisuallyPressed) depthPressed else depth
+    val contentInset = if (isVisuallyPressed) depth - depthPressed else 0.dp
     val deleteRed = MaterialTheme.colorScheme.error
 
     Box(modifier = Modifier.padding(end = depth, bottom = depth)) {

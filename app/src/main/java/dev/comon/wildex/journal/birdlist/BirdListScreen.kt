@@ -4,18 +4,14 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.comon.wildex.component.WildexClickableCard
 import dev.comon.wildex.domain.model.BirdSummary
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -150,90 +147,62 @@ fun BirdListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val depth = WildexDimens.shadowOffsetHard
-    val depthPressed = 2.dp
-    val shadowOffset = if (pressed) depthPressed else depth
-    val contentInset = if (pressed) depth - depthPressed else 0.dp
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(end = depth, bottom = depth),
+    WildexClickableCard(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier,
     ) {
+        // 종 번호 박스 — 카트리지 탭 스타일
         Box(
             modifier = Modifier
-                .matchParentSize()
-                .offset(shadowOffset, shadowOffset)
-                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(contentInset, contentInset)
                 .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Button,
-                    onClick = onClick,
-                )
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            // 종 번호 박스 — 카트리지 탭 스타일
+            Text(
+                text = bird.speciesId.takeLast(4).padStart(4, '0'),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = WildexColorRoles.missionCtaBackground(),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = bird.name,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = bird.scientificName,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontStyle = FontStyle.Italic,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // 분류 태그
+        if (bird.familyName.isNotBlank()) {
             Box(
                 modifier = Modifier
-                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center,
+                    .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
             ) {
                 Text(
-                    text = bird.speciesId.takeLast(4).padStart(4, '0'),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = WildexColorRoles.missionCtaBackground(),
-                )
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = bird.name,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = bird.familyName,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = WildexColorRoles.missionCtaForeground(),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = bird.scientificName,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontStyle = FontStyle.Italic,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            // 분류 태그
-            if (bird.familyName.isNotBlank()) {
-                Box(
-                    modifier = Modifier
-                        .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = bird.familyName,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = WildexColorRoles.missionCtaForeground(),
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }
