@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,18 +45,15 @@ import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
 import java.util.Locale
 
-/**
- * 레트로 카트리지 스타일 로그아웃 확인 다이얼로그 (두꺼운 보더·하드 섀도우·헤더 바·할프톤 바디).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WildexLogoutConfirmDialog(
+fun WildexConfirmDialog(
     onDismiss: () -> Unit,
-    onConfirmLogout: () -> Unit,
-    titleText: String = "로그아웃?",
-    messageText: String = "로그아웃하고 타이틀 화면으로 돌아가시겠습니까?",
-    confirmText: String = "로그아웃",
-    dismissText: String? = "취소",
+    onConfirm: () -> Unit,
+    titleText: String,
+    messageText: String,
+    confirmText: String,
+    dismissText: String?,
 ) {
     BasicAlertDialog(
         onDismissRequest = onDismiss,
@@ -66,9 +65,9 @@ fun WildexLogoutConfirmDialog(
                 .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
-            WildexLogoutConfirmDialogCard(
+            WildexConfirmDialogCard(
                 onDismiss = onDismiss,
-                onConfirmLogout = onConfirmLogout,
+                onConfirm = onConfirm,
                 titleText = titleText,
                 messageText = messageText,
                 confirmText = confirmText,
@@ -79,9 +78,9 @@ fun WildexLogoutConfirmDialog(
 }
 
 @Composable
-private fun WildexLogoutConfirmDialogCard(
+private fun WildexConfirmDialogCard(
     onDismiss: () -> Unit,
-    onConfirmLogout: () -> Unit,
+    onConfirm: () -> Unit,
     titleText: String,
     messageText: String,
     confirmText: String,
@@ -186,17 +185,17 @@ private fun WildexLogoutConfirmDialogCard(
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    WildexLogoutDialogActionButton(
+                    WildexConfirmDialogActionButton(
                         text = confirmText,
                         onClick = {
-                            onConfirmLogout()
+                            onConfirm()
                             onDismiss()
                         },
                         containerColor = missionBg,
                         contentColor = missionFg,
                     )
                     if (dismissText != null) {
-                        WildexLogoutDialogActionButton(
+                        WildexConfirmDialogActionButton(
                             text = dismissText,
                             onClick = onDismiss,
                             containerColor = dismissFill,
@@ -240,7 +239,7 @@ private fun WildexLogoutConfirmDialogCard(
 }
 
 @Composable
-private fun WildexLogoutDialogActionButton(
+private fun WildexConfirmDialogActionButton(
     text: String,
     onClick: () -> Unit,
     containerColor: Color,
@@ -250,6 +249,9 @@ private fun WildexLogoutDialogActionButton(
     val outline = WildexTheme.extraColors.cartridgeOutline
     val hardShadow = WildexTheme.extraColors.cartridgeHardShadow
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shadowOffset = if (isPressed) 0.dp else depth
+    val contentInset = if (isPressed) depth else 0.dp
 
     Box(
         modifier = Modifier
@@ -260,12 +262,13 @@ private fun WildexLogoutDialogActionButton(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .offset(depth, depth)
+                    .offset(shadowOffset, shadowOffset)
                     .background(hardShadow, RectangleShape),
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .offset(contentInset, contentInset)
                     .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
                     .background(containerColor, RectangleShape)
                     .clickable(
@@ -287,9 +290,9 @@ private fun WildexLogoutDialogActionButton(
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 640, name = "로그아웃 다이얼로그")
+@Preview(showBackground = true, widthDp = 360, heightDp = 640, name = "확인 다이얼로그")
 @Composable
-private fun WildexLogoutConfirmDialogPreview() {
+private fun WildexConfirmDialogPreview() {
     WildexTheme {
         Box(
             modifier = Modifier
@@ -297,9 +300,9 @@ private fun WildexLogoutConfirmDialogPreview() {
                 .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f)),
             contentAlignment = Alignment.Center,
         ) {
-            WildexLogoutConfirmDialogCard(
+            WildexConfirmDialogCard(
                 onDismiss = { },
-                onConfirmLogout = { },
+                onConfirm = { },
                 titleText = "로그아웃?",
                 messageText = "로그아웃하고 타이틀 화면으로 돌아가시겠습니까?",
                 confirmText = "로그아웃",

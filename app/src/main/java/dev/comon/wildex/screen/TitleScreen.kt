@@ -79,7 +79,7 @@ import dev.comon.wildex.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.comon.wildex.component.WildexCartridgePressButton
-import dev.comon.wildex.component.WildexLogoutConfirmDialog
+import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.ui.theme.WildexColorRoles
 
 /**
@@ -106,13 +106,13 @@ fun TitleScreen(
     BackHandler { showExitDialog = true }
 
     if (showExitDialog) {
-        WildexLogoutConfirmDialog(
+        WildexConfirmDialog(
             titleText = "종료",
             messageText = "앱을 종료하시겠습니까?",
             confirmText = "종료",
             dismissText = "취소",
             onDismiss = { showExitDialog = false },
-            onConfirmLogout = { activity?.finish() },
+            onConfirm = { activity?.finish() },
         )
     }
 

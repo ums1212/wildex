@@ -68,7 +68,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import dev.comon.wildex.component.WildexLogoutConfirmDialog
+import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.data.capture.CaptureRecordEntity
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -99,13 +99,13 @@ fun RecordDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
-        WildexLogoutConfirmDialog(
+        WildexConfirmDialog(
             titleText = "기록 삭제",
             messageText = "기록을 삭제하시겠습니까?",
             confirmText = "예",
             dismissText = "아니오",
             onDismiss = { showDeleteDialog = false },
-            onConfirmLogout = { viewModel.deleteRecord(onDeleted) },
+            onConfirm = { viewModel.deleteRecord(onDeleted) },
         )
     }
 

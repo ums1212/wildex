@@ -90,7 +90,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.comon.wildex.R
-import dev.comon.wildex.component.WildexLogoutConfirmDialog
+import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.component.WildexMenuButton
 import dev.comon.wildex.component.WildexMenuButtonStyle
 import dev.comon.wildex.navigation.WildexCaptureTabRoute
@@ -158,13 +158,13 @@ fun MainMenuScreen(
     BackHandler(enabled = isAtHome) { showExitDialog = true }
 
     if (showExitDialog) {
-        WildexLogoutConfirmDialog(
+        WildexConfirmDialog(
             titleText = "종료",
             messageText = "앱을 종료하시겠습니까?",
             confirmText = "종료",
             dismissText = "취소",
             onDismiss = { showExitDialog = false },
-            onConfirmLogout = { activity?.finish() },
+            onConfirm = { activity?.finish() },
         )
     }
 
@@ -227,9 +227,13 @@ fun MainMenuScreen(
     }
 
     if (showLogoutDialog) {
-        WildexLogoutConfirmDialog(
+        WildexConfirmDialog(
+            titleText = "로그아웃?",
+            messageText = "로그아웃하고 타이틀 화면으로 돌아가시겠습니까?",
+            confirmText = "로그아웃",
+            dismissText = "취소",
             onDismiss = { showLogoutDialog = false },
-            onConfirmLogout = onLogout,
+            onConfirm = onLogout,
         )
     }
 

@@ -27,7 +27,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import dev.comon.wildex.component.WildexLogoutConfirmDialog
+import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.network.SupabaseClient
 import dev.comon.wildex.screen.GuideScreen
 import dev.comon.wildex.screen.MainMenuScreen
@@ -217,7 +217,7 @@ fun WildexRoot(isDarkTheme: Boolean) {
                                 // 유저 삭제·토큰 만료 등 외부 세션 해제 → 안내 다이얼로그 표시
                                 showSessionExpiredDialog = true
                             }
-                            // intentionalLogout 경우 navigation은 onLogout / onConfirmLogout 에서 직접 처리
+                            // intentionalLogout 경우 navigation은 onLogout / onConfirm 에서 직접 처리
                         }
                         is SessionStatus.RefreshFailure -> {
                             // 500 에러·네트워크 오류로 갱신 실패 → 안내 다이얼로그 표시
@@ -228,13 +228,13 @@ fun WildexRoot(isDarkTheme: Boolean) {
                 }
 
                 if (showSessionExpiredDialog) {
-                    WildexLogoutConfirmDialog(
+                    WildexConfirmDialog(
                         titleText = "세션 만료",
                         messageText = "인증 토큰이 만료되었습니다.\n다시 로그인해주세요.",
                         confirmText = "확인",
                         dismissText = null,
                         onDismiss = {},
-                        onConfirmLogout = {
+                        onConfirm = {
                             showSessionExpiredDialog = false
                             scope.launch {
                                 intentionalLogout = true
