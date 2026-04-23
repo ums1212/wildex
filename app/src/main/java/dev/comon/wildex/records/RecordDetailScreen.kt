@@ -70,6 +70,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import dev.comon.wildex.component.WildexConfirmDialog
+import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.data.capture.CaptureRecordEntity
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -263,6 +264,7 @@ private fun RecordDetailContent(
 
 @Composable
 private fun DeleteButton(onClick: () -> Unit) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     var isVisuallyPressed by remember { mutableStateOf(false) }
     LaunchedEffect(interactionSource) {
@@ -299,7 +301,7 @@ private fun DeleteButton(onClick: () -> Unit) {
                     interactionSource = interactionSource,
                     indication = null,
                     role = Role.Button,
-                    onClick = onClick,
+                    onClick = debouncedOnClick,
                 )
                 .padding(horizontal = 20.dp, vertical = 10.dp),
             contentAlignment = Alignment.Center,

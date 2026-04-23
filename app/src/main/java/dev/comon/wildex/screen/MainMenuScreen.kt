@@ -93,6 +93,7 @@ import dev.comon.wildex.R
 import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.component.WildexMenuButton
 import dev.comon.wildex.component.WildexMenuButtonStyle
+import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.navigation.WildexCaptureTabRoute
 import dev.comon.wildex.navigation.WildexJournalTabRoute
 import dev.comon.wildex.navigation.WildexMainBottomTabRoute
@@ -145,6 +146,7 @@ fun MainMenuScreen(
     /** 미리보기·테스트에서 다이얼로그를 처음부터 열 때만 true. 앱에서는 기본 false. */
     initialLogoutDialogOpen: Boolean = false,
 ) {
+    val debouncedOnLoginClick = rememberDebounceClick(onLoginClick)
     var showLogoutDialog by remember(initialLogoutDialogOpen) {
         mutableStateOf(initialLogoutDialogOpen)
     }
@@ -320,7 +322,7 @@ fun MainMenuScreen(
                                 ),
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.clickable(
-                                    onClick = onLoginClick,
+                                    onClick = debouncedOnLoginClick,
                                 ),
                             )
                         }
@@ -732,6 +734,7 @@ private fun MainMenuTopBarDpadIcon() {
 
 @Composable
 private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val depth = WildexDimens.shadowOffsetHard
@@ -759,7 +762,7 @@ private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
                     interactionSource = interactionSource,
                     indication = null,
                     role = Role.Button,
-                    onClick = onClick,
+                    onClick = debouncedOnClick,
                 )
                 .padding(6.dp),
             contentAlignment = Alignment.Center,
@@ -778,6 +781,7 @@ private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
 private fun MainMenuProfileAvatar(
     onClick: () -> Unit,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -788,7 +792,7 @@ private fun MainMenuProfileAvatar(
                 shape = CircleShape,
             )
             .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(onClick = debouncedOnClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -878,6 +882,7 @@ private fun MainMenuBottomBarTabCell(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val depthNormal = WildexDimens.shadowOffsetHard
@@ -917,7 +922,7 @@ private fun MainMenuBottomBarTabCell(
                             interactionSource = interactionSource,
                             indication = null,
                             role = Role.Button,
-                            onClick = onClick,
+                            onClick = debouncedOnClick,
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,

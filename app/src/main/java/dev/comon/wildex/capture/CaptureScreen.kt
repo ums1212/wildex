@@ -95,6 +95,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
@@ -532,10 +533,11 @@ private fun CapturePermissionPlaceholder(
     isPermanentlyDenied: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val debouncedOnAction = rememberDebounceClick(onAction)
     Box(
         modifier = modifier
             .background(WildexPalette.NightVoid, RectangleShape)
-            .clickable(onClick = onAction),
+            .clickable(onClick = debouncedOnAction),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -836,6 +838,7 @@ private fun DpadCell(
 private fun CaptureShutterCluster(
     onCapture: () -> Unit,
 ) {
+    val debouncedOnCapture = rememberDebounceClick(onCapture)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
 
@@ -877,7 +880,7 @@ private fun CaptureShutterCluster(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        onClick = onCapture,
+                        onClick = debouncedOnCapture,
                     ),
                 contentAlignment = Alignment.Center,
             ) {

@@ -214,6 +214,7 @@ private fun BirdListErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val debouncedOnRetry = dev.comon.wildex.component.rememberDebounceClick(onRetry)
     val depth = WildexDimens.shadowOffsetHard
     Column(
         modifier = modifier.padding(WildexDimens.gridMajor),
@@ -246,7 +247,7 @@ private fun BirdListErrorState(
                 modifier = Modifier
                     .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
                     .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
-                    .clickable(role = Role.Button, onClick = onRetry)
+                    .clickable(role = Role.Button, onClick = debouncedOnRetry)
                     .padding(horizontal = 24.dp, vertical = 10.dp),
             ) {
                 Text(

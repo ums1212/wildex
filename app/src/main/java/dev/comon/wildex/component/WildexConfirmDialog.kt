@@ -245,6 +245,7 @@ private fun WildexConfirmDialogActionButton(
     containerColor: Color,
     contentColor: Color,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val depth = WildexDimens.shadowOffsetHard
     val outline = WildexTheme.extraColors.cartridgeOutline
     val hardShadow = WildexTheme.extraColors.cartridgeHardShadow
@@ -275,7 +276,7 @@ private fun WildexConfirmDialogActionButton(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Button,
-                        onClick = onClick,
+                        onClick = debouncedOnClick,
                     )
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center,

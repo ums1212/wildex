@@ -325,6 +325,7 @@ private fun RecordsErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val debouncedOnRetry = dev.comon.wildex.component.rememberDebounceClick(onRetry)
     val depth = WildexDimens.shadowOffsetHard
     Column(
         modifier = modifier.padding(WildexDimens.gridMajor),
@@ -357,7 +358,7 @@ private fun RecordsErrorState(
                 modifier = Modifier
                     .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
                     .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
-                    .clickable(role = Role.Button, onClick = onRetry)
+                    .clickable(role = Role.Button, onClick = debouncedOnRetry)
                     .padding(horizontal = 24.dp, vertical = 10.dp),
             ) {
                 Text(
@@ -378,6 +379,7 @@ private fun RecordsAppendError(
     message: String,
     onRetry: () -> Unit,
 ) {
+    val debouncedOnRetry = dev.comon.wildex.component.rememberDebounceClick(onRetry)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -395,7 +397,7 @@ private fun RecordsAppendError(
             modifier = Modifier
                 .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
                 .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
-                .clickable(role = Role.Button, onClick = onRetry)
+                .clickable(role = Role.Button, onClick = debouncedOnRetry)
                 .padding(horizontal = 12.dp, vertical = 4.dp),
         ) {
             Text(

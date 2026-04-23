@@ -79,6 +79,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import dev.comon.wildex.audio.LocalBgmManager
 import dev.comon.wildex.component.WildexCircleCartridgePressButton
+import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -660,6 +661,7 @@ private fun BirdInfoErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val debouncedOnRetry = rememberDebounceClick(onRetry)
     val depth = WildexDimens.shadowOffsetHard
     Column(
         modifier = modifier.padding(WildexDimens.gridMajor),
@@ -692,7 +694,7 @@ private fun BirdInfoErrorState(
                 modifier = Modifier
                     .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
                     .background(WildexColorRoles.missionCtaBackground(), RectangleShape)
-                    .clickable(role = Role.Button, onClick = onRetry)
+                    .clickable(role = Role.Button, onClick = debouncedOnRetry)
                     .padding(horizontal = 20.dp, vertical = 10.dp),
             ) {
                 Text(

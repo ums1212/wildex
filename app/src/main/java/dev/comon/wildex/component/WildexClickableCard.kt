@@ -42,6 +42,7 @@ fun WildexClickableCard(
     shadowBlockColor: Color = WildexTheme.extraColors.cartridgeHardShadow,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     var isVisuallyPressed by remember { mutableStateOf(false) }
     LaunchedEffect(interactionSource) {
@@ -83,7 +84,7 @@ fun WildexClickableCard(
                     indication = null,
                     enabled = enabled,
                     role = Role.Button,
-                    onClick = onClick,
+                    onClick = debouncedOnClick,
                 )
                 .padding(contentPadding),
             verticalAlignment = verticalAlignment,

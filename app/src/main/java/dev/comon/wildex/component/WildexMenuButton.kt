@@ -226,6 +226,7 @@ fun WildexCartridgePressButton(
     verticalPadding: Dp = WildexDimens.gridStep * 3,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val depthNormal = WildexDimens.shadowOffsetHard
@@ -263,7 +264,7 @@ fun WildexCartridgePressButton(
                     indication = null,
                     enabled = enabled,
                     role = Role.Button,
-                    onClick = onClick
+                    onClick = debouncedOnClick
                 )
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             horizontalArrangement = Arrangement.Center,
@@ -294,6 +295,7 @@ fun WildexCircleCartridgePressButton(
     buttonModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val depthNormal = WildexDimens.shadowOffsetHard
@@ -327,7 +329,7 @@ fun WildexCircleCartridgePressButton(
                     indication = null,
                     enabled = enabled,
                     role = Role.Button,
-                    onClick = onClick,
+                    onClick = debouncedOnClick,
                 ),
             contentAlignment = Alignment.Center,
             content = content,
@@ -351,6 +353,7 @@ private fun WildexMenuButtonImpl(
     contentPadding: PaddingValues,
     icon: @Composable () -> Unit,
 ) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val depthNormal = WildexDimens.shadowOffsetHard
@@ -401,7 +404,7 @@ private fun WildexMenuButtonImpl(
                         indication = null,
                         enabled = enabled,
                         role = Role.Button,
-                        onClick = onClick,
+                        onClick = debouncedOnClick,
                     )
                     .padding(contentPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
