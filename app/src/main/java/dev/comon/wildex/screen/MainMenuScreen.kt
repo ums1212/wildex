@@ -1012,6 +1012,7 @@ private fun MainMenuTiledBackground(modifier: Modifier = Modifier) {
         Spacer(
             modifier = Modifier
                 .size(coverDp)
+                .offset(x = (-160).dp)
                 .graphicsLayer { rotationZ = -30f }
                 .drawBehind {
                     val tick = globalTickState.value
