@@ -542,6 +542,7 @@ fun MainMenuScreen(
                         },
                     ) {
                         CaptureScreen(
+                            animatedVisibilityScope = this,
                             onNavigateToBirdInfo = { speciesId, recordId ->
                                 pendingCaptureSpeciesId = speciesId
                                 pendingCaptureRecordId = recordId

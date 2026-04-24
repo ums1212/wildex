@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -99,7 +101,9 @@ import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexPalette
 import dev.comon.wildex.ui.theme.WildexTheme
+import androidx.compose.runtime.snapshotFlow
 import kotlin.coroutines.resume
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import androidx.core.content.edit
 
@@ -114,6 +118,7 @@ fun CaptureScreen(
     onNavigateToBirdInfo: (speciesId: String, recordId: Long?) -> Unit,
     modifier: Modifier = Modifier,
     onAnalyzingChanged: (Boolean) -> Unit = {},
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     viewModel: CaptureViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -267,7 +272,14 @@ fun CaptureScreen(
             if (state.flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    LaunchedEffect(state.hasCameraPermission, lifecycleOwner) {
+    LaunchedEffect(state.hasCameraPermission, lifecycleOwner, animatedVisibilityScope) {
+        // 진입 전환 완료까지 대기 — 전환 중 bindToLifecycle이 프레임을 끊지 않도록
+        animatedVisibilityScope?.let { scope ->
+            snapshotFlow {
+                scope.transition.currentState == EnterExitState.Visible &&
+                    scope.transition.targetState == EnterExitState.Visible
+            }.first { it }
+        }
         if (!state.hasCameraPermission) {
             runCatching {
                 context.awaitProcessCameraProvider()?.unbindAll()
