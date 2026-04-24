@@ -156,7 +156,9 @@ private fun RecordDetailContent(
     }
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surface)
+            .verticalScroll(rememberScrollState()),
     ) {
         // 이미지
         val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {

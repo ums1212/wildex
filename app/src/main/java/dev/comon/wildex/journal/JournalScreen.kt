@@ -192,7 +192,6 @@ private fun JournalCategoryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(scrollState)
             .padding(WildexDimens.gridMajor),
         verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
