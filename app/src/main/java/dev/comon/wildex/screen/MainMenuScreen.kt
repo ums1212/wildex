@@ -271,9 +271,10 @@ fun MainMenuScreen(
             Column(
                 modifier = topBarAnimModifier
                     .fillMaxWidth()
+                    .graphicsLayer { translationY = topBarTranslation }
+                    .background(MaterialTheme.colorScheme.surface)
                     .statusBarsPadding()
-                    .onGloballyPositioned { topBarHeightPx = it.size.height }
-                    .graphicsLayer { translationY = topBarTranslation },
+                    .onGloballyPositioned { topBarHeightPx = it.size.height },
             ) {
                 val showBackButton =
                     (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) ||
@@ -285,7 +286,6 @@ fun MainMenuScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
