@@ -115,7 +115,9 @@ fun RecordDetailScreen(
         when {
             record == null -> {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(40.dp),
                     color = WildexColorRoles.missionCtaBackground(),
                 )
             }
