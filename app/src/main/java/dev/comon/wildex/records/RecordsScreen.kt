@@ -1,5 +1,6 @@
 package dev.comon.wildex.records
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -8,6 +9,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +25,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,15 +37,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -53,6 +65,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import dev.comon.wildex.component.WildexClickableCard
+import dev.comon.wildex.component.WildexConfirmDialog
 import dev.comon.wildex.data.capture.CaptureRecordEntity
 import dev.comon.wildex.navigation.WildexRecordDetailRoute
 import dev.comon.wildex.navigation.WildexRecordsListRoute
@@ -63,13 +76,23 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+
+private const val LONG_PRESS_DURATION_MS = 1000L
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RecordsScreen(
     modifier: Modifier = Modifier,
     onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
+    onEditModeStateChanged: (
+        isEditMode: Boolean,
+        selectedCount: Int,
+        onExitEditMode: () -> Unit,
+        onRequestDelete: () -> Unit,
+    ) -> Unit = { _, _, _, _ -> },
     pendingRecordId: Long? = null,
     onPendingRecordIdConsumed: () -> Unit = {},
 ) {
@@ -81,12 +104,47 @@ fun RecordsScreen(
         onBackNavigationState(canNavigateBack) { navController.popBackStack() }
     }
 
+    val viewModel: RecordsViewModel = viewModel()
+    val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val isDeleting by viewModel.isDeleting.collectAsStateWithLifecycle()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isEditMode, selectedIds) {
+        onEditModeStateChanged(
+            isEditMode,
+            selectedIds.size,
+            viewModel::exitEditMode,
+            { showDeleteDialog = true },
+        )
+    }
+
     LaunchedEffect(pendingRecordId) {
         if (pendingRecordId != null) {
+            viewModel.exitEditMode()
             navController.popBackStack(WildexRecordsListRoute, inclusive = false)
             navController.navigate(WildexRecordDetailRoute(pendingRecordId))
             onPendingRecordIdConsumed()
         }
+    }
+
+    BackHandler(enabled = isEditMode && !canNavigateBack) {
+        viewModel.exitEditMode()
+    }
+
+    if (showDeleteDialog) {
+        WildexConfirmDialog(
+            titleText = "기록 삭제",
+            messageText = "선택한 기록을 삭제하시겠습니까?",
+            confirmText = "예",
+            dismissText = "아니오",
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = { viewModel.deleteSelected() },
+        )
+    }
+
+    if (isDeleting) {
+        RecordsDeletingDialog()
     }
 
     SharedTransitionLayout(modifier = modifier.fillMaxSize()) {
@@ -104,6 +162,7 @@ fun RecordsScreen(
                 RecordsListContent(
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this,
+                    viewModel = viewModel,
                     onRecordClick = { id -> navController.navigate(WildexRecordDetailRoute(id)) },
                 )
             }
@@ -134,6 +193,8 @@ private fun RecordsListContent(
     viewModel: RecordsViewModel = viewModel(),
 ) {
     val lazyItems = viewModel.records.collectAsLazyPagingItems()
+    val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -174,7 +235,11 @@ private fun RecordsListContent(
                                 record = record,
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
-                                onClick = { onRecordClick(record.id) },
+                                isEditMode = isEditMode,
+                                isSelected = selectedIds.contains(record.id),
+                                onEnterEditMode = { viewModel.enterEditMode(record.id) },
+                                onToggleSelect = { viewModel.toggleSelected(record.id) },
+                                onOpen = { onRecordClick(record.id) },
                             )
                         }
                     }
@@ -216,74 +281,172 @@ private fun RecordsCard(
     modifier: Modifier = Modifier,
     sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    onClick: () -> Unit = {},
+    isEditMode: Boolean = false,
+    isSelected: Boolean = false,
+    onEnterEditMode: () -> Unit = {},
+    onToggleSelect: () -> Unit = {},
+    onOpen: () -> Unit = {},
 ) {
-    WildexClickableCard(
-        onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier,
-    ) {
-        // 썸네일
-        val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-            with(sharedTransitionScope) {
-                Modifier.sharedElement(
-                    sharedContentState = rememberSharedContentState(key = "record_image_${record.id}"),
-                    animatedVisibilityScope = animatedVisibilityScope,
-                )
-            }
-        } else Modifier
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            SubcomposeAsyncImage(
-                model = record.imageUri,
-                contentDescription = record.name ?: "미확인",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().then(sharedImageMod),
-            ) {
-                when (painter.state) {
-                    is AsyncImagePainter.State.Loading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = WildexColorRoles.missionCtaBackground(),
-                        )
+    val longPressMod = if (!isEditMode) {
+        Modifier.pointerInput(record.id) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                try {
+                    withTimeout(LONG_PRESS_DURATION_MS) {
+                        waitForUpOrCancellation()
                     }
-                    is AsyncImagePainter.State.Error -> {
-                        Icon(
-                            imageVector = Icons.Filled.BrokenImage,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                    else -> SubcomposeAsyncImageContent()
+                } catch (_: PointerEventTimeoutCancellationException) {
+                    onEnterEditMode()
                 }
             }
         }
-        // 텍스트
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    } else Modifier
+
+    Box(modifier = modifier.then(longPressMod)) {
+        WildexClickableCard(
+            onClick = if (isEditMode) onToggleSelect else onOpen,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = record.name ?: "미확인",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+            // 썸네일
+            val sharedImageMod: Modifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedElement(
+                        sharedContentState = rememberSharedContentState(key = "record_image_${record.id}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
+                }
+            } else Modifier
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                SubcomposeAsyncImage(
+                    model = record.imageUri,
+                    contentDescription = record.name ?: "미확인",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().then(sharedImageMod),
+                ) {
+                    when (painter.state) {
+                        is AsyncImagePainter.State.Loading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = WildexColorRoles.missionCtaBackground(),
+                            )
+                        }
+                        is AsyncImagePainter.State.Error -> {
+                            Icon(
+                                imageVector = Icons.Filled.BrokenImage,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        else -> SubcomposeAsyncImageContent()
+                    }
+                }
+            }
+            // 텍스트
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = record.name ?: "미확인",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+                Text(
+                    text = formatTimestamp(record.capturedAt),
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            // 편집모드 체크박스
+            if (isEditMode) {
+                RecordsSelectionCheckbox(checked = isSelected)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordsSelectionCheckbox(checked: Boolean) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+            .background(
+                if (checked) WildexColorRoles.missionCtaBackground()
+                else MaterialTheme.colorScheme.surfaceContainerLowest,
+                RectangleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = WildexColorRoles.missionCtaForeground(),
+                modifier = Modifier.size(16.dp),
             )
-            Text(
-                text = formatTimestamp(record.capturedAt),
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecordsDeletingDialog() {
+    val depth = WildexDimens.shadowOffsetHard
+    BasicAlertDialog(
+        onDismissRequest = {},
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .padding(end = depth, bottom = depth),
+        ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(depth, depth)
+                    .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
             )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                    .padding(horizontal = WildexDimens.gridMajor, vertical = WildexDimens.gridMajor),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
+            ) {
+                Text(
+                    text = "삭제하는 중",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    strokeWidth = 3.dp,
+                    color = WildexColorRoles.missionCtaBackground(),
+                )
+            }
         }
     }
 }
@@ -447,6 +610,8 @@ private fun RecordsCardPreview() {
                     name = null,
                     category = null,
                 ),
+                isEditMode = true,
+                isSelected = true,
             )
         }
     }

@@ -49,6 +49,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
@@ -188,6 +189,10 @@ fun MainMenuScreen(
     var journalOnBack: () -> Unit by remember { mutableStateOf({}) }
     var recordsCanNavigateBack by remember { mutableStateOf(false) }
     var recordsOnBack: () -> Unit by remember { mutableStateOf({}) }
+    var recordsEditMode by remember { mutableStateOf(false) }
+    var recordsSelectedCount by remember { mutableIntStateOf(0) }
+    var recordsOnExitEditMode: () -> Unit by remember { mutableStateOf({}) }
+    var recordsOnRequestDelete: () -> Unit by remember { mutableStateOf({}) }
 
     // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
     var barsVisible by remember { mutableStateOf(true) }
@@ -225,14 +230,23 @@ fun MainMenuScreen(
 
     LaunchedEffect(selectedBottomTab) {
         if (selectedBottomTab != WildexCaptureTabRoute) captureAnalyzing = false
-        if (selectedBottomTab != WildexRecordsTabRoute) barsVisible = true
+        if (selectedBottomTab != WildexRecordsTabRoute) {
+            barsVisible = true
+            recordsOnExitEditMode()
+        }
+    }
+
+    LaunchedEffect(recordsEditMode) {
+        if (recordsEditMode) barsVisible = true
     }
 
     val selectedBottomTabRef = rememberUpdatedState(selectedBottomTab)
+    val recordsEditModeRef = rememberUpdatedState(recordsEditMode)
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (journalCanNavigateBack || selectedBottomTabRef.value == WildexRecordsTabRoute) {
+                    if (recordsEditModeRef.value) return Offset.Zero
                     if (available.y < -3f) barsVisible = false
                     else if (available.y > 3f) barsVisible = true
                 }
@@ -283,6 +297,7 @@ fun MainMenuScreen(
                     selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack -> recordsOnBack
                     else -> journalOnBack
                 }
+                val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -290,7 +305,9 @@ fun MainMenuScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (showBackButton) {
+                    if (isRecordsEditMode) {
+                        MainMenuTopBarBackButton(onClick = recordsOnExitEditMode)
+                    } else if (showBackButton) {
                         MainMenuTopBarBackButton(onClick = backOnClick)
                     } else {
                         MainMenuTopBarDpadIcon()
@@ -299,7 +316,34 @@ fun MainMenuScreen(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (isLoggedIn) {
+                        if (isRecordsEditMode) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .border(
+                                        width = WildexDimens.borderStrokeChunky,
+                                        color = WildexTheme.extraColors.cartridgeOutline,
+                                        shape = RectangleShape,
+                                    )
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                        shape = RectangleShape,
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "선택 : ${recordsSelectedCount}개",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        } else if (isLoggedIn) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(0.92f)
@@ -340,7 +384,12 @@ fun MainMenuScreen(
                             )
                         }
                     }
-                    if (isLoggedIn) {
+                    if (isRecordsEditMode) {
+                        MainMenuRecordsDeleteButton(
+                            enabled = recordsSelectedCount > 0,
+                            onClick = recordsOnRequestDelete,
+                        )
+                    } else if (isLoggedIn) {
                         MainMenuProfileAvatar(
                             onClick = { showLogoutDialog = true },
                         )
@@ -611,6 +660,12 @@ fun MainMenuScreen(
                                 recordsCanNavigateBack = canNavigateBack
                                 recordsOnBack = onBack
                             },
+                            onEditModeStateChanged = { isEdit, count, onExit, onDelete ->
+                                recordsEditMode = isEdit
+                                recordsSelectedCount = count
+                                recordsOnExitEditMode = onExit
+                                recordsOnRequestDelete = onDelete
+                            },
                             pendingRecordId = pendingRecordDetailId,
                             onPendingRecordIdConsumed = { pendingRecordDetailId = null },
                         )
@@ -788,6 +843,59 @@ private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "뒤로가기",
                 tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainMenuRecordsDeleteButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depth = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depth
+    val contentInset = if (pressed) depth - depthPressed else 0.dp
+    val ctaColor = WildexColorRoles.missionCtaBackground()
+
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(end = depth, bottom = depth),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(shadowOffset, shadowOffset)
+                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .offset(contentInset, contentInset)
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                .background(
+                    if (enabled) ctaColor else ctaColor.copy(alpha = 0.4f),
+                    RectangleShape,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = debouncedOnClick,
+                )
+                .padding(6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "선택 삭제",
+                tint = WildexColorRoles.missionCtaForeground(),
                 modifier = Modifier.size(20.dp),
             )
         }

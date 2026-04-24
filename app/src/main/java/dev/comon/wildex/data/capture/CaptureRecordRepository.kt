@@ -69,6 +69,11 @@ class CaptureRecordRepository(context: Context) {
             .onFailure { Log.e(TAG, "deleteRecord 실패", it) }
     }
 
+    suspend fun deleteRecords(ids: List<Long>) = withContext(Dispatchers.IO) {
+        runCatching { dao.deleteByIds(ids) }
+            .onFailure { Log.e(TAG, "deleteRecords 실패", it) }
+    }
+
     fun recordsPager(pageSize: Int = 10): Flow<PagingData<CaptureRecordEntity>> =
         Pager(
             config = PagingConfig(

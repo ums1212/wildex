@@ -28,4 +28,7 @@ interface CaptureRecordDao {
 
     @Query("DELETE FROM capture_record WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM capture_record WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
 }
