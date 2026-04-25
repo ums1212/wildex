@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.domain.model.BirdListResult
+import dev.comon.wildex.domain.model.BirdSummary
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -53,6 +54,27 @@ class BirdCacheDataStore(context: Context) {
         val json = runCatching { cacheJson.encodeToString(BirdDetail.serializer(), detail) }
             .getOrNull() ?: return
         store.edit { it[key] = json }
+    }
+
+    /**
+     * 캐시된 모든 목록 페이지(`bird_list_page_*`)를 순회하여
+     * [name]을 포함하는 모든 [BirdSummary]를 반환한다.
+     */
+    suspend fun findAllByName(name: String): List<BirdSummary> {
+        val prefs = store.data.firstOrNull() ?: return emptyList()
+        val seen = mutableSetOf<String>()
+        val results = mutableListOf<BirdSummary>()
+        for ((key, value) in prefs.asMap()) {
+            if (!key.name.startsWith("bird_list_page_") || value !is String) continue
+            val result = runCatching { cacheJson.decodeFromString<BirdListResult>(value) }.getOrNull()
+                ?: continue
+            for (item in result.items) {
+                if (item.name.contains(name, ignoreCase = true) && seen.add(item.speciesId)) {
+                    results += item
+                }
+            }
+        }
+        return results
     }
 
     /**

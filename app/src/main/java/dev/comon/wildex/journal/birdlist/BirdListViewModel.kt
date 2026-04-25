@@ -41,6 +41,49 @@ class BirdListViewModel(application: Application) : AndroidViewModel(application
             is BirdListIntent.BirdClicked -> viewModelScope.launch {
                 _events.send(BirdListUiEvent.NavigateToBirdInfo(intent.speciesId))
             }
+            BirdListIntent.EnterSearchMode -> _state.update { it.copy(isSearchMode = true) }
+            BirdListIntent.ExitSearchMode -> _state.update {
+                it.copy(
+                    isSearchMode = false,
+                    pendingQuery = "",
+                    submittedQuery = null,
+                    searchResults = emptyList(),
+                    searchError = null,
+                    isSearching = false,
+                )
+            }
+            is BirdListIntent.PendingQueryChanged -> _state.update {
+                it.copy(pendingQuery = intent.query)
+            }
+            BirdListIntent.SubmitSearch -> {
+                val name = _state.value.pendingQuery.trim().ifEmpty { null } ?: return
+                _state.update { it.copy(submittedQuery = name) }
+                runSearch(name)
+            }
+        }
+    }
+
+    fun enterSearchMode() = onIntent(BirdListIntent.EnterSearchMode)
+    fun exitSearchMode() = onIntent(BirdListIntent.ExitSearchMode)
+    fun onPendingQueryChange(query: String) = onIntent(BirdListIntent.PendingQueryChanged(query))
+    fun submitSearch() = onIntent(BirdListIntent.SubmitSearch)
+
+    private fun runSearch(name: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSearching = true, searchError = null) }
+            runCatching {
+                repository.searchListByName(name)
+            }.onSuccess { results ->
+                _state.update { it.copy(isSearching = false, searchResults = results) }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(
+                        isSearching = false,
+                        searchResults = emptyList(),
+                        searchError = e.message ?: "검색 실패",
+                    )
+                }
+            }
         }
     }
 

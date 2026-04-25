@@ -9,6 +9,12 @@ data class BirdListUiState(
     val error: String? = null,
     val hasMore: Boolean = true,
     val pageNo: Int = 1,
+    val isSearchMode: Boolean = false,
+    val pendingQuery: String = "",
+    val submittedQuery: String? = null,
+    val searchResults: List<BirdSummary> = emptyList(),
+    val isSearching: Boolean = false,
+    val searchError: String? = null,
 )
 
 sealed interface BirdListIntent {
@@ -16,6 +22,10 @@ sealed interface BirdListIntent {
     data object LoadMore : BirdListIntent
     data object Retry : BirdListIntent
     data class BirdClicked(val speciesId: String) : BirdListIntent
+    data object EnterSearchMode : BirdListIntent
+    data object ExitSearchMode : BirdListIntent
+    data class PendingQueryChanged(val query: String) : BirdListIntent
+    data object SubmitSearch : BirdListIntent
 }
 
 sealed interface BirdListUiEvent {

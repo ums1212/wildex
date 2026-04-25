@@ -1,13 +1,17 @@
 package dev.comon.wildex.journal.birdlist
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +22,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,12 +41,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.comon.wildex.component.WildexClickableCard
+import dev.comon.wildex.component.rememberDebounceClick
 import dev.comon.wildex.domain.model.BirdSummary
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
@@ -49,6 +58,13 @@ import dev.comon.wildex.ui.theme.WildexTheme
 fun BirdListScreen(
     onBirdClick: (speciesId: String) -> Unit,
     modifier: Modifier = Modifier,
+    onSearchModeStateChanged: (
+        isSearchMode: Boolean,
+        pendingQuery: String,
+        onQueryChange: (String) -> Unit,
+        onSubmit: () -> Unit,
+        onExitSearch: () -> Unit,
+    ) -> Unit = { _, _, _, _, _ -> },
     viewModel: BirdListViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -64,7 +80,24 @@ fun BirdListScreen(
         }
     }
 
+    LaunchedEffect(state.isSearchMode, state.pendingQuery) {
+        onSearchModeStateChanged(
+            state.isSearchMode,
+            state.pendingQuery,
+            viewModel::onPendingQueryChange,
+            viewModel::submitSearch,
+            viewModel::exitSearchMode,
+        )
+    }
+
+    BackHandler(enabled = state.isSearchMode) {
+        viewModel.exitSearchMode()
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
+        if (!state.isSearchMode) {
+            BirdListTopToolbar(onSearchClick = viewModel::enterSearchMode)
+        }
         when {
             state.isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -80,12 +113,135 @@ fun BirdListScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+            state.isSearchMode -> {
+                BirdListSearchContent(
+                    state = state,
+                    onBirdClick = { viewModel.onIntent(BirdListIntent.BirdClicked(it)) },
+                    onRetry = viewModel::submitSearch,
+                )
+            }
             else -> {
                 BirdListContent(
                     state = state,
                     onBirdClick = { viewModel.onIntent(BirdListIntent.BirdClicked(it)) },
                     onLoadMore = { viewModel.onIntent(BirdListIntent.LoadMore) },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BirdListTopToolbar(
+    onSearchClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val debouncedClick = rememberDebounceClick(onSearchClick)
+    val depth = WildexDimens.shadowOffsetHard
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shadowOffset = if (isPressed) 0.dp else depth
+    val contentInset = if (isPressed) depth else 0.dp
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = WildexDimens.gridMajor, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .padding(end = depth, bottom = depth),
+        ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(shadowOffset, shadowOffset)
+                    .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp - depth)
+                    .offset(contentInset, contentInset)
+                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = debouncedClick,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "검색",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BirdListSearchContent(
+    state: BirdListUiState,
+    onBirdClick: (String) -> Unit,
+    onRetry: () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            state.isSearching -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = WildexColorRoles.missionCtaBackground(),
+                )
+            }
+            state.searchError != null -> {
+                BirdListErrorState(
+                    message = state.searchError,
+                    onRetry = onRetry,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            state.submittedQuery == null -> {
+                Text(
+                    text = "검색어를 입력하세요",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(WildexDimens.gridMajor),
+                )
+            }
+            state.searchResults.isEmpty() -> {
+                Text(
+                    text = "결과 없음",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(WildexDimens.gridMajor),
+                )
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = WildexDimens.gridMajor,
+                        vertical = WildexDimens.gridMajor,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
+                ) {
+                    itemsIndexed(state.searchResults, key = { _, bird -> bird.speciesId }) { _, bird ->
+                        BirdListCard(bird = bird, onClick = { onBirdClick(bird.speciesId) })
+                    }
+                }
             }
         }
     }
@@ -214,7 +370,7 @@ private fun BirdListErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val debouncedOnRetry = dev.comon.wildex.component.rememberDebounceClick(onRetry)
+    val debouncedOnRetry = rememberDebounceClick(onRetry)
     val depth = WildexDimens.shadowOffsetHard
     Column(
         modifier = modifier.padding(WildexDimens.gridMajor),

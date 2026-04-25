@@ -153,7 +153,7 @@ private val mainMenuBottomTabUiRows: List<MainMenuBottomTabUi> = listOf(
 )
 
 private enum class MainMenuTopBarMode {
-    DEFAULT, RECORDS_EDIT, RECORDS_SEARCH
+    DEFAULT, RECORDS_EDIT, RECORDS_SEARCH, JOURNAL_SEARCH
 }
 
 /** 테두리·하드 섀도 예약·아이콘·라벨이 잘리지 않도록 하는 하단 탭 행 높이 */
@@ -216,6 +216,13 @@ fun MainMenuScreen(
     // IME 조합 문자 깨짐 방지: TextField는 로컬 상태로 관리하고 submit 시에만 ViewModel에 전달
     var localSearchQuery by remember(recordsSearchMode) { mutableStateOf("") }
 
+    // BirdList(Journal) 검색 모드 상태
+    var journalSearchMode by remember { mutableStateOf(false) }
+    var journalOnSearchQueryChange: (String) -> Unit by remember { mutableStateOf({}) }
+    var journalOnSearchSubmit: () -> Unit by remember { mutableStateOf({}) }
+    var journalOnExitSearchMode: () -> Unit by remember { mutableStateOf({}) }
+    var localJournalSearchQuery by remember(journalSearchMode) { mutableStateOf("") }
+
     // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
     var barsVisible by remember { mutableStateOf(true) }
     var topBarHeightPx by remember { mutableIntStateOf(0) }
@@ -257,6 +264,9 @@ fun MainMenuScreen(
             recordsOnExitEditMode()
             recordsOnExitSearchMode()
         }
+        if (selectedBottomTab != WildexJournalTabRoute) {
+            journalOnExitSearchMode()
+        }
     }
 
     LaunchedEffect(recordsEditMode) {
@@ -267,14 +277,19 @@ fun MainMenuScreen(
         if (recordsSearchMode) barsVisible = true
     }
 
+    LaunchedEffect(journalSearchMode) {
+        if (journalSearchMode) barsVisible = true
+    }
+
     val selectedBottomTabRef = rememberUpdatedState(selectedBottomTab)
     val recordsEditModeRef = rememberUpdatedState(recordsEditMode)
     val recordsSearchModeRef = rememberUpdatedState(recordsSearchMode)
+    val journalSearchModeRef = rememberUpdatedState(journalSearchMode)
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (journalCanNavigateBack || selectedBottomTabRef.value == WildexRecordsTabRoute) {
-                    if (recordsEditModeRef.value || recordsSearchModeRef.value) return Offset.Zero
+                    if (recordsEditModeRef.value || recordsSearchModeRef.value || journalSearchModeRef.value) return Offset.Zero
                     if (available.y < -3f) barsVisible = false
                     else if (available.y > 3f) barsVisible = true
                 }
@@ -327,9 +342,11 @@ fun MainMenuScreen(
                 }
                 val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
                 val isRecordsSearchMode = selectedBottomTab == WildexRecordsTabRoute && recordsSearchMode && !recordsEditMode
+                val isJournalSearchMode = selectedBottomTab == WildexJournalTabRoute && journalSearchMode
                 val topBarMode = when {
                     isRecordsEditMode -> MainMenuTopBarMode.RECORDS_EDIT
                     isRecordsSearchMode -> MainMenuTopBarMode.RECORDS_SEARCH
+                    isJournalSearchMode -> MainMenuTopBarMode.JOURNAL_SEARCH
                     else -> MainMenuTopBarMode.DEFAULT
                 }
                 AnimatedContent(
@@ -367,6 +384,15 @@ fun MainMenuScreen(
                                 recordsOnSearchSubmit()
                             },
                             onExitSearchMode = recordsOnExitSearchMode,
+                        )
+                        MainMenuTopBarMode.JOURNAL_SEARCH -> MainMenuTopBarJournalSearchRow(
+                            localSearchQuery = localJournalSearchQuery,
+                            onLocalSearchQueryChange = { localJournalSearchQuery = it },
+                            onSubmit = {
+                                journalOnSearchQueryChange(localJournalSearchQuery)
+                                journalOnSearchSubmit()
+                            },
+                            onExitSearchMode = journalOnExitSearchMode,
                         )
                     }
                 }
@@ -524,6 +550,12 @@ fun MainMenuScreen(
                             onBackNavigationState = { canNavigateBack, onBack, _ ->
                                 journalCanNavigateBack = canNavigateBack
                                 journalOnBack = onBack
+                            },
+                            onSearchModeStateChanged = { isSearch, _, onQ, onSubmit, onExit ->
+                                journalSearchMode = isSearch
+                                journalOnSearchQueryChange = onQ
+                                journalOnSearchSubmit = onSubmit
+                                journalOnExitSearchMode = onExit
                             },
                             pendingSpeciesId = pendingCaptureSpeciesId,
                             pendingRecordId = pendingCaptureRecordId,
@@ -1025,6 +1057,56 @@ private fun MainMenuTopBarRecordsSearchRow(
                 },
             )
         }
+        MainMenuRecordsSearchSubmitButton(
+            enabled = localSearchQuery.isNotBlank(),
+            onClick = onSubmit,
+        )
+    }
+}
+
+@Composable
+private fun MainMenuTopBarJournalSearchRow(
+    localSearchQuery: String,
+    onLocalSearchQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onExitSearchMode: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MainMenuTopBarBackButton(onClick = onExitSearchMode)
+        BasicTextField(
+            value = localSearchQuery,
+            onValueChange = onLocalSearchQueryChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.labelMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .weight(1f)
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (localSearchQuery.isEmpty()) {
+                        Text(
+                            text = "새 이름 검색",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
         MainMenuRecordsSearchSubmitButton(
             enabled = localSearchQuery.isNotBlank(),
             onClick = onSubmit,

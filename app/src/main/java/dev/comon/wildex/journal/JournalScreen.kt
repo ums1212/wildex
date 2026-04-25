@@ -56,6 +56,13 @@ import dev.comon.wildex.ui.theme.WildexTheme
 fun JournalScreen(
     modifier: Modifier = Modifier,
     onBackNavigationState: (canNavigateBack: Boolean, onBack: () -> Unit, title: String?) -> Unit = { _, _, _ -> },
+    onSearchModeStateChanged: (
+        isSearchMode: Boolean,
+        pendingQuery: String,
+        onQueryChange: (String) -> Unit,
+        onSubmit: () -> Unit,
+        onExitSearch: () -> Unit,
+    ) -> Unit = { _, _, _, _, _ -> },
     pendingSpeciesId: String? = null,
     pendingRecordId: Long? = null,
     onPendingSpeciesIdConsumed: () -> Unit = {},
@@ -95,6 +102,9 @@ fun JournalScreen(
             popEnterTransition = { fadeIn(tween(300, easing = FastOutSlowInEasing)) },
             popExitTransition = { fadeOut(tween(300, easing = FastOutSlowInEasing)) },
         ) {
+            LaunchedEffect(Unit) {
+                onSearchModeStateChanged(false, "", {}, {}, {})
+            }
             JournalCategoryScreen(
                 onBirdListClick = {
                     navController.navigate(WildexBirdListRoute)
@@ -131,6 +141,7 @@ fun JournalScreen(
                 onBirdClick = { speciesId ->
                     navController.navigate(WildexBirdInfoRoute(speciesId))
                 },
+                onSearchModeStateChanged = onSearchModeStateChanged,
             )
         }
         composable<WildexBirdInfoRoute>(
@@ -159,6 +170,9 @@ fun JournalScreen(
                 )
             },
         ) { backStackEntry ->
+            LaunchedEffect(Unit) {
+                onSearchModeStateChanged(false, "", {}, {}, {})
+            }
             val route = backStackEntry.toRoute<WildexBirdInfoRoute>()
             BirdInfoScreen(
                 speciesId = route.speciesId,

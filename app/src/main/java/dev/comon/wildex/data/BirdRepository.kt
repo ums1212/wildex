@@ -3,6 +3,7 @@ package dev.comon.wildex.data
 import android.content.Context
 import dev.comon.wildex.domain.model.BirdDetail
 import dev.comon.wildex.domain.model.BirdListResult
+import dev.comon.wildex.domain.model.BirdSummary
 import dev.comon.wildex.network.WildexApiClient
 import dev.comon.wildex.network.dto.BirdSearchResultDto
 import dev.comon.wildex.network.toDomain
@@ -53,6 +54,27 @@ class BirdRepository(context: Context) {
         } catch (e: HttpException) {
             when (e.code()) {
                 404 -> throw NoSuchElementException(name)
+                400 -> throw IllegalArgumentException("Invalid anml_nm: '$name'", e)
+                else -> throw e
+            }
+        }
+    }
+
+    /**
+     * 조류 이름으로 BirdSummary 목록을 반환한다.
+     * 1. `bird_list_page_*` 캐시에서 부분 일치 → 히트 시 즉시 반환
+     * 2. 서버 `/api/wildex/bird-search-list/` 호출 → 결과 반환
+     * 서버 404 → 빈 리스트, 400 → [IllegalArgumentException]
+     */
+    suspend fun searchListByName(name: String): List<BirdSummary> {
+        val cached = cache.findAllByName(name)
+        if (cached.isNotEmpty()) return cached
+
+        return try {
+            api.searchBirdListByName(name = name).toDomain().items
+        } catch (e: HttpException) {
+            when (e.code()) {
+                404 -> emptyList()
                 400 -> throw IllegalArgumentException("Invalid anml_nm: '$name'", e)
                 else -> throw e
             }

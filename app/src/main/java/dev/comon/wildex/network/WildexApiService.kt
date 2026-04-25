@@ -35,4 +35,10 @@ interface WildexApiService {
     suspend fun searchBirdByName(
         @Query("anml_nm") name: String
     ): BirdSearchResponseDto
+
+    /** 조류 이름 부분 일치 검색 — BirdSummary 전체 필드 반환 (서버 구현 예정). */
+    @GET("/api/wildex/bird-search-list/")
+    suspend fun searchBirdListByName(
+        @Query("anml_nm") name: String
+    ): BirdListResponseDto
 }
