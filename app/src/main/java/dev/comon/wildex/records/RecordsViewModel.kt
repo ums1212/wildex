@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 private data class RecordsQueryParams(
     val ascending: Boolean,
-    val dateMillis: Long?,
+    val startMillis: Long?,
+    val endMillis: Long?,
     val category: RecordsSearchCategory,
     val query: String?,
 )
@@ -30,8 +30,11 @@ class RecordsViewModel(application: Application) : AndroidViewModel(application)
     private val _sortAscending = MutableStateFlow(false)
     val sortAscending: StateFlow<Boolean> = _sortAscending.asStateFlow()
 
-    private val _dateFilterMillis = MutableStateFlow<Long?>(null)
-    val dateFilterMillis: StateFlow<Long?> = _dateFilterMillis.asStateFlow()
+    private val _dateFilterStartMillis = MutableStateFlow<Long?>(null)
+    val dateFilterStartMillis: StateFlow<Long?> = _dateFilterStartMillis.asStateFlow()
+
+    private val _dateFilterEndMillis = MutableStateFlow<Long?>(null)
+    val dateFilterEndMillis: StateFlow<Long?> = _dateFilterEndMillis.asStateFlow()
 
     private val _searchCategory = MutableStateFlow(RecordsSearchCategory.NAME)
     val searchCategory: StateFlow<RecordsSearchCategory> = _searchCategory.asStateFlow()
@@ -48,16 +51,16 @@ class RecordsViewModel(application: Application) : AndroidViewModel(application)
     val records: Flow<PagingData<CaptureRecordEntity>> =
         combine(
             _sortAscending,
-            _dateFilterMillis,
+            _dateFilterStartMillis,
+            _dateFilterEndMillis,
             _searchCategory,
             _submittedQuery,
-        ) { asc, date, cat, q -> RecordsQueryParams(asc, date, cat, q) }
+        ) { asc, startMs, endMs, cat, q -> RecordsQueryParams(asc, startMs, endMs, cat, q) }
             .flatMapLatest { p ->
-                val (start, end) = p.dateMillis?.let { toDayBounds(it) } ?: (null to null)
                 repository.filteredRecordsPager(
                     pageSize = 10,
-                    startMillis = start,
-                    endMillis = end,
+                    startMillis = p.startMillis,
+                    endMillis = p.endMillis,
                     category = p.category.name,
                     query = p.query?.takeIf { it.isNotBlank() },
                     ascending = p.ascending,
@@ -78,8 +81,9 @@ class RecordsViewModel(application: Application) : AndroidViewModel(application)
         _sortAscending.value = !_sortAscending.value
     }
 
-    fun setDateFilter(millis: Long?) {
-        _dateFilterMillis.value = millis
+    fun setDateFilter(startMillis: Long?, endMillis: Long?) {
+        _dateFilterStartMillis.value = startMillis
+        _dateFilterEndMillis.value = endMillis
     }
 
     fun setSearchCategory(c: RecordsSearchCategory) {
@@ -134,16 +138,3 @@ class RecordsViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
-private fun toDayBounds(millis: Long): Pair<Long, Long> {
-    val cal = Calendar.getInstance().apply { timeInMillis = millis }
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-    val start = cal.timeInMillis
-    cal.set(Calendar.HOUR_OF_DAY, 23)
-    cal.set(Calendar.MINUTE, 59)
-    cal.set(Calendar.SECOND, 59)
-    cal.set(Calendar.MILLISECOND, 999)
-    return start to cal.timeInMillis
-}

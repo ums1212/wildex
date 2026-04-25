@@ -176,14 +176,16 @@ fun RecordsScreen(
         RecordsDeletingDialog()
     }
 
-    val dateFilterMillis by viewModel.dateFilterMillis.collectAsStateWithLifecycle()
+    val dateFilterStartMillis by viewModel.dateFilterStartMillis.collectAsStateWithLifecycle()
+    val dateFilterEndMillis by viewModel.dateFilterEndMillis.collectAsStateWithLifecycle()
 
     if (showDateDialog) {
         RecordsDateFilterDialog(
-            initialMillis = dateFilterMillis,
+            initialStartMillis = dateFilterStartMillis,
+            initialEndMillis = dateFilterEndMillis,
             onDismiss = { showDateDialog = false },
-            onApply = { viewModel.setDateFilter(it) },
-            onClearAll = { viewModel.setDateFilter(null) },
+            onApply = { start, end -> viewModel.setDateFilter(start, end) },
+            onClearAll = { viewModel.setDateFilter(null, null) },
         )
     }
 
@@ -238,11 +240,12 @@ private fun RecordsListContent(
     val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val sortAscending by viewModel.sortAscending.collectAsStateWithLifecycle()
-    val dateFilterMillis by viewModel.dateFilterMillis.collectAsStateWithLifecycle()
+    val dateFilterStartMillis by viewModel.dateFilterStartMillis.collectAsStateWithLifecycle()
+    val dateFilterEndMillis by viewModel.dateFilterEndMillis.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         RecordsTopToolbar(
-            isDateFilterActive = dateFilterMillis != null,
+            isDateFilterActive = dateFilterStartMillis != null || dateFilterEndMillis != null,
             isSortAscending = sortAscending,
             onCalendarClick = onCalendarClick,
             onSortToggle = viewModel::toggleSort,

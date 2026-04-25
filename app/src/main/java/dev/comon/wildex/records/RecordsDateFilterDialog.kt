@@ -46,27 +46,48 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordsDateFilterDialog(
-    initialMillis: Long?,
+    initialStartMillis: Long?,
+    initialEndMillis: Long?,
     onDismiss: () -> Unit,
-    onApply: (Long) -> Unit,
+    onApply: (startMillis: Long, endMillis: Long) -> Unit,
     onClearAll: () -> Unit,
 ) {
     val now = Calendar.getInstance()
-    val initCal = Calendar.getInstance().apply {
-        timeInMillis = initialMillis ?: now.timeInMillis
+    val startCal = Calendar.getInstance().apply {
+        timeInMillis = initialStartMillis ?: now.timeInMillis
+    }
+    val endCal = Calendar.getInstance().apply {
+        timeInMillis = initialEndMillis ?: initialStartMillis ?: now.timeInMillis
     }
     val currentYear = now.get(Calendar.YEAR)
     val years = (currentYear downTo currentYear - 9).toList()
 
-    var selectedYear by remember { mutableIntStateOf(initCal.get(Calendar.YEAR).coerceIn(years.last(), years.first())) }
-    var selectedMonth by remember { mutableIntStateOf(initCal.get(Calendar.MONTH) + 1) }
-    var selectedDay by remember { mutableIntStateOf(initCal.get(Calendar.DAY_OF_MONTH)) }
+    var startYear by remember { mutableIntStateOf(startCal.get(Calendar.YEAR).coerceIn(years.last(), years.first())) }
+    var startMonth by remember { mutableIntStateOf(startCal.get(Calendar.MONTH) + 1) }
+    var startDay by remember { mutableIntStateOf(startCal.get(Calendar.DAY_OF_MONTH)) }
+
+    var endYear by remember { mutableIntStateOf(endCal.get(Calendar.YEAR).coerceIn(years.last(), years.first())) }
+    var endMonth by remember { mutableIntStateOf(endCal.get(Calendar.MONTH) + 1) }
+    var endDay by remember { mutableIntStateOf(endCal.get(Calendar.DAY_OF_MONTH)) }
 
     fun maxDay(year: Int, month: Int): Int {
         val cal = Calendar.getInstance()
         cal.set(Calendar.YEAR, year)
         cal.set(Calendar.MONTH, month - 1)
         return cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+
+    fun ensureEndOnOrAfterStart() {
+        if (endYear < startYear ||
+            (endYear == startYear && endMonth < startMonth) ||
+            (endYear == startYear && endMonth == startMonth && endDay < startDay)
+        ) {
+            endYear = startYear
+            endMonth = startMonth
+            endDay = startDay
+        } else if (endYear == startYear && endMonth == startMonth) {
+            endDay = endDay.coerceAtLeast(startDay)
+        }
     }
 
     BasicAlertDialog(
@@ -81,28 +102,40 @@ fun RecordsDateFilterDialog(
         ) {
             DateFilterCard(
                 years = years,
-                selectedYear = selectedYear,
-                selectedMonth = selectedMonth,
-                selectedDay = selectedDay,
-                onYearChange = { y ->
-                    selectedYear = y
-                    selectedDay = selectedDay.coerceAtMost(maxDay(y, selectedMonth))
+                currentYear = currentYear,
+                startYear = startYear,
+                startMonth = startMonth,
+                startDay = startDay,
+                endYear = endYear,
+                endMonth = endMonth,
+                endDay = endDay,
+                onStartYearChange = { y ->
+                    startYear = y
+                    startDay = startDay.coerceAtMost(maxDay(y, startMonth))
+                    ensureEndOnOrAfterStart()
                 },
-                onMonthChange = { m ->
-                    selectedMonth = m
-                    selectedDay = selectedDay.coerceAtMost(maxDay(selectedYear, m))
+                onStartMonthChange = { m ->
+                    startMonth = m
+                    startDay = startDay.coerceAtMost(maxDay(startYear, m))
+                    ensureEndOnOrAfterStart()
                 },
-                onDayChange = { selectedDay = it },
+                onStartDayChange = { d ->
+                    startDay = d
+                    ensureEndOnOrAfterStart()
+                },
+                onEndYearChange = { y ->
+                    endYear = y
+                    endDay = endDay.coerceAtMost(maxDay(y, endMonth))
+                },
+                onEndMonthChange = { m ->
+                    endMonth = m
+                    endDay = endDay.coerceAtMost(maxDay(endYear, m))
+                },
+                onEndDayChange = { endDay = it },
                 onApply = {
-                    val cal = Calendar.getInstance()
-                    cal.set(Calendar.YEAR, selectedYear)
-                    cal.set(Calendar.MONTH, selectedMonth - 1)
-                    cal.set(Calendar.DAY_OF_MONTH, selectedDay)
-                    cal.set(Calendar.HOUR_OF_DAY, 0)
-                    cal.set(Calendar.MINUTE, 0)
-                    cal.set(Calendar.SECOND, 0)
-                    cal.set(Calendar.MILLISECOND, 0)
-                    onApply(cal.timeInMillis)
+                    val startMillis = toEpochMillis(startYear, startMonth, startDay, endOfDay = false)
+                    val endMillis = toEpochMillis(endYear, endMonth, endDay, endOfDay = true)
+                    onApply(startMillis, endMillis)
                     onDismiss()
                 },
                 onClearAll = {
@@ -117,12 +150,19 @@ fun RecordsDateFilterDialog(
 @Composable
 private fun DateFilterCard(
     years: List<Int>,
-    selectedYear: Int,
-    selectedMonth: Int,
-    selectedDay: Int,
-    onYearChange: (Int) -> Unit,
-    onMonthChange: (Int) -> Unit,
-    onDayChange: (Int) -> Unit,
+    currentYear: Int,
+    startYear: Int,
+    startMonth: Int,
+    startDay: Int,
+    endYear: Int,
+    endMonth: Int,
+    endDay: Int,
+    onStartYearChange: (Int) -> Unit,
+    onStartMonthChange: (Int) -> Unit,
+    onStartDayChange: (Int) -> Unit,
+    onEndYearChange: (Int) -> Unit,
+    onEndMonthChange: (Int) -> Unit,
+    onEndDayChange: (Int) -> Unit,
     onApply: () -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -133,6 +173,8 @@ private fun DateFilterCard(
     val cardBodySurface = MaterialTheme.colorScheme.surfaceVariant
     val missionBg = WildexColorRoles.missionCtaBackground()
     val missionFg = WildexColorRoles.missionCtaForeground()
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val labelStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
 
     fun maxDay(year: Int, month: Int): Int {
         val cal = Calendar.getInstance()
@@ -141,7 +183,15 @@ private fun DateFilterCard(
         return cal.getActualMaximum(Calendar.DAY_OF_MONTH)
     }
 
-    val days = (1..maxDay(selectedYear, selectedMonth)).toList()
+    val startDays = (1..maxDay(startYear, startMonth)).toList()
+
+    val endYears = (currentYear downTo startYear).toList()
+    val endMonths = if (endYear == startYear) (startMonth..12).toList() else (1..12).toList()
+    val endDays = run {
+        val maxD = maxDay(endYear, endMonth)
+        val minD = if (endYear == startYear && endMonth == startMonth) startDay else 1
+        (minD..maxD).toList()
+    }
 
     Box(
         modifier = Modifier
@@ -192,36 +242,74 @@ private fun DateFilterCard(
                         .size(WildexDimens.borderStrokeChunky)
                         .background(outline, RectangleShape),
                 )
-                // 본문: 년/월/일 드롭다운
-                Row(
+                // 본문: 시작일/종료일 드롭다운
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(cardBodySurface, RectangleShape)
-                        .padding(horizontal = 16.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    WildexDropdown(
-                        items = years,
-                        selected = selectedYear,
-                        onSelect = onYearChange,
-                        label = { "${it}년" },
-                        modifier = Modifier.weight(2f),
-                    )
-                    WildexDropdown(
-                        items = (1..12).toList(),
-                        selected = selectedMonth,
-                        onSelect = onMonthChange,
-                        label = { "${it}월" },
-                        modifier = Modifier.weight(1.2f),
-                    )
-                    WildexDropdown(
-                        items = days,
-                        selected = selectedDay.coerceAtMost(days.last()),
-                        onSelect = onDayChange,
-                        label = { "${it}일" },
-                        modifier = Modifier.weight(1.2f),
-                    )
+                    // 시작일
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(text = "시작일", style = labelStyle, color = labelColor)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WildexDropdown(
+                                items = years,
+                                selected = startYear,
+                                onSelect = onStartYearChange,
+                                label = { "${it}년" },
+                                modifier = Modifier.weight(2f),
+                            )
+                            WildexDropdown(
+                                items = (1..12).toList(),
+                                selected = startMonth,
+                                onSelect = onStartMonthChange,
+                                label = { "${it}월" },
+                                modifier = Modifier.weight(1.2f),
+                            )
+                            WildexDropdown(
+                                items = startDays,
+                                selected = startDay.coerceAtMost(startDays.last()),
+                                onSelect = onStartDayChange,
+                                label = { "${it}일" },
+                                modifier = Modifier.weight(1.2f),
+                            )
+                        }
+                    }
+                    // 종료일
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(text = "종료일", style = labelStyle, color = labelColor)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WildexDropdown(
+                                items = endYears,
+                                selected = endYear,
+                                onSelect = onEndYearChange,
+                                label = { "${it}년" },
+                                modifier = Modifier.weight(2f),
+                            )
+                            WildexDropdown(
+                                items = endMonths,
+                                selected = endMonth.coerceAtLeast(endMonths.first()),
+                                onSelect = onEndMonthChange,
+                                label = { "${it}월" },
+                                modifier = Modifier.weight(1.2f),
+                            )
+                            WildexDropdown(
+                                items = endDays,
+                                selected = endDay.coerceIn(endDays.first(), endDays.last()),
+                                onSelect = onEndDayChange,
+                                label = { "${it}일" },
+                                modifier = Modifier.weight(1.2f),
+                            )
+                        }
+                    }
                 }
                 // 액션 버튼
                 Column(
@@ -324,4 +412,23 @@ private fun DateFilterActionButton(
             }
         }
     }
+}
+
+private fun toEpochMillis(year: Int, month: Int, day: Int, endOfDay: Boolean): Long {
+    val cal = Calendar.getInstance()
+    cal.set(Calendar.YEAR, year)
+    cal.set(Calendar.MONTH, month - 1)
+    cal.set(Calendar.DAY_OF_MONTH, day)
+    if (endOfDay) {
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+    } else {
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+    }
+    return cal.timeInMillis
 }
