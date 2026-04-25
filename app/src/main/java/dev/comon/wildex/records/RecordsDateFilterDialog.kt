@@ -326,7 +326,7 @@ private fun DateFilterCard(
                         contentColor = missionFg,
                     )
                     DateFilterActionButton(
-                        text = "전체",
+                        text = "필터 해제",
                         onClick = onClearAll,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
