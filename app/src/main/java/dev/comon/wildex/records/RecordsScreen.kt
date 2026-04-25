@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
@@ -242,6 +243,12 @@ private fun RecordsListContent(
     val sortAscending by viewModel.sortAscending.collectAsStateWithLifecycle()
     val dateFilterStartMillis by viewModel.dateFilterStartMillis.collectAsStateWithLifecycle()
     val dateFilterEndMillis by viewModel.dateFilterEndMillis.collectAsStateWithLifecycle()
+    val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(lazyItems.loadState) {
+        if(lazyItems.loadState.refresh is LoadState.NotLoading && lazyItems.itemCount != 0)
+            lazyListState.scrollToItem(0)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         RecordsTopToolbar(
@@ -274,6 +281,7 @@ private fun RecordsListContent(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
+                    state = lazyListState,
                     contentPadding = PaddingValues(
                         horizontal = WildexDimens.gridMajor,
                         vertical = WildexDimens.gridMajor,
