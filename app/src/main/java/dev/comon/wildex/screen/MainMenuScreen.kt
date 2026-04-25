@@ -128,11 +128,11 @@ import dev.comon.wildex.component.WildexDropdown
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
-import dev.comon.wildex.ui.theme.WildexInputDefaults
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import java.util.Locale
 import kotlin.math.sqrt
@@ -996,24 +996,33 @@ private fun MainMenuTopBarRecordsSearchRow(
                 selectedLabel = { it.label.take(1) },
                 wrapContent = true,
             )
-            OutlinedTextField(
+            BasicTextField(
                 value = localSearchQuery,
                 onValueChange = onLocalSearchQueryChange,
                 singleLine = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(44.dp),
-                placeholder = {
-                    Text(
-                        text = "검색어",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-                colors = WildexInputDefaults.outlinedFieldColors(),
-                shape = RectangleShape,
+                textStyle = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                textStyle = MaterialTheme.typography.labelMedium,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .weight(1f)
+                    .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest, RectangleShape)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (localSearchQuery.isEmpty()) {
+                            Text(
+                                text = "검색어",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
             )
         }
         MainMenuRecordsSearchSubmitButton(
