@@ -1,5 +1,6 @@
 package dev.comon.wildex.screen
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -18,6 +19,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -149,6 +151,10 @@ private val mainMenuBottomTabUiRows: List<MainMenuBottomTabUi> = listOf(
     MainMenuBottomTabUi(WildexRecordsTabRoute, Icons.Filled.PhotoLibrary, "RECORDS"),
     MainMenuBottomTabUi(WildexSettingsTabRoute, Icons.Filled.Settings, "SETTINGS"),
 )
+
+private enum class MainMenuTopBarMode {
+    DEFAULT, RECORDS_EDIT, RECORDS_SEARCH
+}
 
 /** 테두리·하드 섀도 예약·아이콘·라벨이 잘리지 않도록 하는 하단 탭 행 높이 */
 private val MainMenuBottomBarHeight = 72.dp
@@ -321,152 +327,47 @@ fun MainMenuScreen(
                 }
                 val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
                 val isRecordsSearchMode = selectedBottomTab == WildexRecordsTabRoute && recordsSearchMode && !recordsEditMode
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    // 왼쪽 슬롯
-                    if (isRecordsEditMode) {
-                        MainMenuTopBarBackButton(onClick = recordsOnExitEditMode)
-                    } else if (isRecordsSearchMode) {
-                        MainMenuTopBarBackButton(onClick = recordsOnExitSearchMode)
-                    } else if (showBackButton) {
-                        MainMenuTopBarBackButton(onClick = backOnClick)
-                    } else {
-                        MainMenuTopBarDpadIcon()
-                    }
-                    // 가운데 슬롯
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isRecordsEditMode) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.92f)
-                                    .border(
-                                        width = WildexDimens.borderStrokeChunky,
-                                        color = WildexTheme.extraColors.cartridgeOutline,
-                                        shape = RectangleShape,
-                                    )
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                                        shape = RectangleShape,
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = "선택 : ${recordsSelectedCount}개",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        } else if (isRecordsSearchMode) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                WildexDropdown(
-                                    items = RecordsSearchCategory.entries,
-                                    selected = recordsSearchCategory,
-                                    onSelect = recordsOnSearchCategoryChange,
-                                    label = { it.label },
-                                    modifier = Modifier.weight(1.2f),
-                                )
-                                OutlinedTextField(
-                                    value = localSearchQuery,
-                                    onValueChange = { localSearchQuery = it },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(2f)
-                                        .height(44.dp),
-                                    placeholder = {
-                                        Text(
-                                            text = "검색어",
-                                            style = MaterialTheme.typography.labelSmall,
-                                        )
-                                    },
-                                    colors = WildexInputDefaults.outlinedFieldColors(),
-                                    shape = RectangleShape,
-                                    keyboardActions = KeyboardActions(onSearch = {
-                                        recordsOnSearchQueryChange(localSearchQuery)
-                                        recordsOnSearchSubmit()
-                                    }),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    textStyle = MaterialTheme.typography.labelMedium,
-                                )
-                            }
-                        } else if (isLoggedIn) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.92f)
-                                    .border(
-                                        width = WildexDimens.borderStrokeChunky,
-                                        color = WildexTheme.extraColors.cartridgeOutline,
-                                        shape = RectangleShape,
-                                    )
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                                        shape = RectangleShape,
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = userNickname.uppercase(Locale.getDefault()),
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = "로그인",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable(
-                                    onClick = debouncedOnLoginClick,
-                                ),
-                            )
-                        }
-                    }
-                    // 오른쪽 슬롯
-                    if (isRecordsEditMode) {
-                        MainMenuRecordsDeleteButton(
-                            enabled = recordsSelectedCount > 0,
-                            onClick = recordsOnRequestDelete,
+                val topBarMode = when {
+                    isRecordsEditMode -> MainMenuTopBarMode.RECORDS_EDIT
+                    isRecordsSearchMode -> MainMenuTopBarMode.RECORDS_SEARCH
+                    else -> MainMenuTopBarMode.DEFAULT
+                }
+                AnimatedContent(
+                    targetState = topBarMode,
+                    transitionSpec = {
+                        (slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it } +
+                            fadeIn(tween(300, easing = FastOutSlowInEasing))) togetherWith
+                            (slideOutVertically(tween(300, easing = FastOutSlowInEasing)) { -it } +
+                                fadeOut(tween(300, easing = FastOutSlowInEasing)))
+                    },
+                    modifier = Modifier.fillMaxWidth().clipToBounds(),
+                    label = "topBarMode",
+                ) { mode ->
+                    when (mode) {
+                        MainMenuTopBarMode.DEFAULT -> MainMenuTopBarDefaultRow(
+                            showBackButton = showBackButton,
+                            backOnClick = backOnClick,
+                            isLoggedIn = isLoggedIn,
+                            userNickname = userNickname,
+                            onLoginClick = debouncedOnLoginClick,
+                            onProfileClick = { showLogoutDialog = true },
                         )
-                    } else if (isRecordsSearchMode) {
-                        MainMenuRecordsSearchSubmitButton(
-                            enabled = localSearchQuery.isNotBlank(),
-                            onClick = {
+                        MainMenuTopBarMode.RECORDS_EDIT -> MainMenuTopBarRecordsEditRow(
+                            selectedCount = recordsSelectedCount,
+                            onExitEditMode = recordsOnExitEditMode,
+                            onRequestDelete = recordsOnRequestDelete,
+                        )
+                        MainMenuTopBarMode.RECORDS_SEARCH -> MainMenuTopBarRecordsSearchRow(
+                            searchCategory = recordsSearchCategory,
+                            onCategoryChange = recordsOnSearchCategoryChange,
+                            localSearchQuery = localSearchQuery,
+                            onLocalSearchQueryChange = { localSearchQuery = it },
+                            onSubmit = {
                                 recordsOnSearchQueryChange(localSearchQuery)
                                 recordsOnSearchSubmit()
                             },
+                            onExitSearchMode = recordsOnExitSearchMode,
                         )
-                    } else if (isLoggedIn) {
-                        MainMenuProfileAvatar(
-                            onClick = { showLogoutDialog = true },
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(44.dp))
                     }
                 }
                 HorizontalDivider(
@@ -926,6 +827,198 @@ private fun MainMenuTopBarBackButton(onClick: () -> Unit) {
                 modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun MainMenuTopBarDefaultRow(
+    showBackButton: Boolean,
+    backOnClick: () -> Unit,
+    isLoggedIn: Boolean,
+    userNickname: String,
+    onLoginClick: () -> Unit,
+    onProfileClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AnimatedContent(
+            targetState = showBackButton,
+            transitionSpec = {
+                (slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it } +
+                    fadeIn(tween(300, easing = FastOutSlowInEasing))) togetherWith
+                    (slideOutVertically(tween(300, easing = FastOutSlowInEasing)) { -it } +
+                        fadeOut(tween(300, easing = FastOutSlowInEasing)))
+            },
+            modifier = Modifier.clipToBounds(),
+            label = "topBarLeftSlot",
+        ) { isBack ->
+            if (isBack) {
+                MainMenuTopBarBackButton(onClick = backOnClick)
+            } else {
+                MainMenuTopBarDpadIcon()
+            }
+        }
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isLoggedIn) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .border(
+                            width = WildexDimens.borderStrokeChunky,
+                            color = WildexTheme.extraColors.cartridgeOutline,
+                            shape = RectangleShape,
+                        )
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            shape = RectangleShape,
+                        )
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = userNickname.uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            } else {
+                Text(
+                    text = "로그인",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onLoginClick),
+                )
+            }
+        }
+        if (isLoggedIn) {
+            MainMenuProfileAvatar(onClick = onProfileClick)
+        } else {
+            Spacer(modifier = Modifier.size(44.dp))
+        }
+    }
+}
+
+@Composable
+private fun MainMenuTopBarRecordsEditRow(
+    selectedCount: Int,
+    onExitEditMode: () -> Unit,
+    onRequestDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MainMenuTopBarBackButton(onClick = onExitEditMode)
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .border(
+                        width = WildexDimens.borderStrokeChunky,
+                        color = WildexTheme.extraColors.cartridgeOutline,
+                        shape = RectangleShape,
+                    )
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        shape = RectangleShape,
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "선택 : ${selectedCount}개",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        MainMenuRecordsDeleteButton(
+            enabled = selectedCount > 0,
+            onClick = onRequestDelete,
+        )
+    }
+}
+
+@Composable
+private fun MainMenuTopBarRecordsSearchRow(
+    searchCategory: RecordsSearchCategory,
+    onCategoryChange: (RecordsSearchCategory) -> Unit,
+    localSearchQuery: String,
+    onLocalSearchQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onExitSearchMode: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MainMenuTopBarBackButton(onClick = onExitSearchMode)
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WildexDropdown(
+                items = RecordsSearchCategory.entries,
+                selected = searchCategory,
+                onSelect = onCategoryChange,
+                label = { it.label },
+                modifier = Modifier.weight(1.2f),
+            )
+            OutlinedTextField(
+                value = localSearchQuery,
+                onValueChange = onLocalSearchQueryChange,
+                singleLine = true,
+                modifier = Modifier
+                    .weight(2f)
+                    .height(44.dp),
+                placeholder = {
+                    Text(
+                        text = "검색어",
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                colors = WildexInputDefaults.outlinedFieldColors(),
+                shape = RectangleShape,
+                keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                textStyle = MaterialTheme.typography.labelMedium,
+            )
+        }
+        MainMenuRecordsSearchSubmitButton(
+            enabled = localSearchQuery.isNotBlank(),
+            onClick = onSubmit,
+        )
     }
 }
 
