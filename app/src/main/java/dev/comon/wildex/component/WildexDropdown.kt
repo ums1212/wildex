@@ -37,6 +37,8 @@ fun <T> WildexDropdown(
     onSelect: (T) -> Unit,
     label: (T) -> String,
     modifier: Modifier = Modifier,
+    selectedLabel: (T) -> String = label,
+    wrapContent: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val outline = WildexTheme.extraColors.cartridgeOutline
@@ -51,13 +53,13 @@ fun <T> WildexDropdown(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = label(selected),
+                text = selectedLabel(selected),
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
+                modifier = if (wrapContent) Modifier else Modifier.weight(1f),
             )
             Icon(
                 imageVector = Icons.Filled.ArrowDropDown,

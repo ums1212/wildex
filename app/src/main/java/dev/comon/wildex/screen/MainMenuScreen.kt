@@ -993,14 +993,15 @@ private fun MainMenuTopBarRecordsSearchRow(
                 selected = searchCategory,
                 onSelect = onCategoryChange,
                 label = { it.label },
-                modifier = Modifier.weight(1.2f),
+                selectedLabel = { it.label.take(1) },
+                wrapContent = true,
             )
             OutlinedTextField(
                 value = localSearchQuery,
                 onValueChange = onLocalSearchQueryChange,
                 singleLine = true,
                 modifier = Modifier
-                    .weight(2f)
+                    .weight(1f)
                     .height(44.dp),
                 placeholder = {
                     Text(
