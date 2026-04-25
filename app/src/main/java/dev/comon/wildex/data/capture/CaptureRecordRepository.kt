@@ -83,4 +83,23 @@ class CaptureRecordRepository(context: Context) {
             ),
             pagingSourceFactory = { dao.pagingSource() },
         ).flow
+
+    fun filteredRecordsPager(
+        pageSize: Int = 10,
+        startMillis: Long?,
+        endMillis: Long?,
+        category: String,
+        query: String?,
+        ascending: Boolean,
+    ): Flow<PagingData<CaptureRecordEntity>> =
+        Pager(
+            config = PagingConfig(
+                pageSize = pageSize,
+                initialLoadSize = pageSize,
+                enablePlaceholders = false,
+            ),
+            pagingSourceFactory = {
+                dao.filteredPagingSource(startMillis, endMillis, category, query, ascending)
+            },
+        ).flow
 }

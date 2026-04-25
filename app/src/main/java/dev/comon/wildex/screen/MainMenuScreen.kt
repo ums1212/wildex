@@ -121,9 +121,17 @@ import dev.comon.wildex.capture.CaptureScreen
 import dev.comon.wildex.journal.JournalScreen
 import dev.comon.wildex.navigation.WildexCaptureResultRoute
 import dev.comon.wildex.records.RecordsScreen
+import dev.comon.wildex.records.RecordsSearchCategory
+import dev.comon.wildex.component.WildexDropdown
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
+import dev.comon.wildex.ui.theme.WildexInputDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.ImeAction
 import java.util.Locale
 import kotlin.math.sqrt
 
@@ -193,6 +201,14 @@ fun MainMenuScreen(
     var recordsSelectedCount by remember { mutableIntStateOf(0) }
     var recordsOnExitEditMode: () -> Unit by remember { mutableStateOf({}) }
     var recordsOnRequestDelete: () -> Unit by remember { mutableStateOf({}) }
+    var recordsSearchMode by remember { mutableStateOf(false) }
+    var recordsSearchCategory by remember { mutableStateOf(RecordsSearchCategory.NAME) }
+    var recordsOnSearchCategoryChange: (RecordsSearchCategory) -> Unit by remember { mutableStateOf({}) }
+    var recordsOnSearchQueryChange: (String) -> Unit by remember { mutableStateOf({}) }
+    var recordsOnSearchSubmit: () -> Unit by remember { mutableStateOf({}) }
+    var recordsOnExitSearchMode: () -> Unit by remember { mutableStateOf({}) }
+    // IME 조합 문자 깨짐 방지: TextField는 로컬 상태로 관리하고 submit 시에만 ViewModel에 전달
+    var localSearchQuery by remember(recordsSearchMode) { mutableStateOf("") }
 
     // 스크롤 기반 bars 슬라이드 (BirdList/BirdInfo 화면에서만 활성)
     var barsVisible by remember { mutableStateOf(true) }
@@ -233,6 +249,7 @@ fun MainMenuScreen(
         if (selectedBottomTab != WildexRecordsTabRoute) {
             barsVisible = true
             recordsOnExitEditMode()
+            recordsOnExitSearchMode()
         }
     }
 
@@ -240,13 +257,18 @@ fun MainMenuScreen(
         if (recordsEditMode) barsVisible = true
     }
 
+    LaunchedEffect(recordsSearchMode) {
+        if (recordsSearchMode) barsVisible = true
+    }
+
     val selectedBottomTabRef = rememberUpdatedState(selectedBottomTab)
     val recordsEditModeRef = rememberUpdatedState(recordsEditMode)
+    val recordsSearchModeRef = rememberUpdatedState(recordsSearchMode)
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (journalCanNavigateBack || selectedBottomTabRef.value == WildexRecordsTabRoute) {
-                    if (recordsEditModeRef.value) return Offset.Zero
+                    if (recordsEditModeRef.value || recordsSearchModeRef.value) return Offset.Zero
                     if (available.y < -3f) barsVisible = false
                     else if (available.y > 3f) barsVisible = true
                 }
@@ -298,6 +320,7 @@ fun MainMenuScreen(
                     else -> journalOnBack
                 }
                 val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
+                val isRecordsSearchMode = selectedBottomTab == WildexRecordsTabRoute && recordsSearchMode && !recordsEditMode
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -305,13 +328,17 @@ fun MainMenuScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    // 왼쪽 슬롯
                     if (isRecordsEditMode) {
                         MainMenuTopBarBackButton(onClick = recordsOnExitEditMode)
+                    } else if (isRecordsSearchMode) {
+                        MainMenuTopBarBackButton(onClick = recordsOnExitSearchMode)
                     } else if (showBackButton) {
                         MainMenuTopBarBackButton(onClick = backOnClick)
                     } else {
                         MainMenuTopBarDpadIcon()
                     }
+                    // 가운데 슬롯
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center,
@@ -341,6 +368,42 @@ fun MainMenuScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     textAlign = TextAlign.Center,
+                                )
+                            }
+                        } else if (isRecordsSearchMode) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                WildexDropdown(
+                                    items = RecordsSearchCategory.entries,
+                                    selected = recordsSearchCategory,
+                                    onSelect = recordsOnSearchCategoryChange,
+                                    label = { it.label },
+                                    modifier = Modifier.weight(1.2f),
+                                )
+                                OutlinedTextField(
+                                    value = localSearchQuery,
+                                    onValueChange = { localSearchQuery = it },
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .weight(2f)
+                                        .height(44.dp),
+                                    placeholder = {
+                                        Text(
+                                            text = "검색어",
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    },
+                                    colors = WildexInputDefaults.outlinedFieldColors(),
+                                    shape = RectangleShape,
+                                    keyboardActions = KeyboardActions(onSearch = {
+                                        recordsOnSearchQueryChange(localSearchQuery)
+                                        recordsOnSearchSubmit()
+                                    }),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    textStyle = MaterialTheme.typography.labelMedium,
                                 )
                             }
                         } else if (isLoggedIn) {
@@ -384,10 +447,19 @@ fun MainMenuScreen(
                             )
                         }
                     }
+                    // 오른쪽 슬롯
                     if (isRecordsEditMode) {
                         MainMenuRecordsDeleteButton(
                             enabled = recordsSelectedCount > 0,
                             onClick = recordsOnRequestDelete,
+                        )
+                    } else if (isRecordsSearchMode) {
+                        MainMenuRecordsSearchSubmitButton(
+                            enabled = localSearchQuery.isNotBlank(),
+                            onClick = {
+                                recordsOnSearchQueryChange(localSearchQuery)
+                                recordsOnSearchSubmit()
+                            },
                         )
                     } else if (isLoggedIn) {
                         MainMenuProfileAvatar(
@@ -666,6 +738,14 @@ fun MainMenuScreen(
                                 recordsOnExitEditMode = onExit
                                 recordsOnRequestDelete = onDelete
                             },
+                            onSearchModeStateChanged = { isSearch, cat, _, onCat, onQ, onSubmit, onExit ->
+                                recordsSearchMode = isSearch
+                                recordsSearchCategory = cat
+                                recordsOnSearchCategoryChange = onCat
+                                recordsOnSearchQueryChange = onQ
+                                recordsOnSearchSubmit = onSubmit
+                                recordsOnExitSearchMode = onExit
+                            },
                             pendingRecordId = pendingRecordDetailId,
                             onPendingRecordIdConsumed = { pendingRecordDetailId = null },
                         )
@@ -895,6 +975,59 @@ private fun MainMenuRecordsDeleteButton(
             Icon(
                 imageVector = Icons.Filled.Delete,
                 contentDescription = "선택 삭제",
+                tint = WildexColorRoles.missionCtaForeground(),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainMenuRecordsSearchSubmitButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val debouncedOnClick = rememberDebounceClick(onClick)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val depth = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depth
+    val contentInset = if (pressed) depth - depthPressed else 0.dp
+    val ctaColor = WildexColorRoles.missionCtaBackground()
+
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(end = depth, bottom = depth),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(shadowOffset, shadowOffset)
+                .background(WildexTheme.extraColors.cartridgeHardShadow, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .offset(contentInset, contentInset)
+                .border(WildexDimens.borderStrokeChunky, WildexTheme.extraColors.cartridgeOutline, RectangleShape)
+                .background(
+                    if (enabled) ctaColor else ctaColor.copy(alpha = 0.4f),
+                    RectangleShape,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = debouncedOnClick,
+                )
+                .padding(6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = "검색",
                 tint = WildexColorRoles.missionCtaForeground(),
                 modifier = Modifier.size(20.dp),
             )

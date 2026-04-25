@@ -23,6 +23,31 @@ interface CaptureRecordDao {
     @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
     fun pagingSource(): PagingSource<Int, CaptureRecordEntity>
 
+    @Query(
+        """
+        SELECT * FROM capture_record
+        WHERE (:startMillis IS NULL OR capturedAt >= :startMillis)
+          AND (:endMillis IS NULL OR capturedAt <= :endMillis)
+          AND (
+              :query IS NULL
+              OR (:category = 'NAME'     AND name     LIKE '%' || :query || '%')
+              OR (:category = 'CATEGORY' AND category LIKE '%' || :query || '%')
+              OR (:category = 'LOCATION' AND address  LIKE '%' || :query || '%')
+              OR (:category = 'MEMO'     AND memo     LIKE '%' || :query || '%')
+          )
+        ORDER BY
+            CASE WHEN :ascending = 1 THEN capturedAt END ASC,
+            CASE WHEN :ascending = 0 THEN capturedAt END DESC
+        """,
+    )
+    fun filteredPagingSource(
+        startMillis: Long?,
+        endMillis: Long?,
+        category: String,
+        query: String?,
+        ascending: Boolean,
+    ): PagingSource<Int, CaptureRecordEntity>
+
     @Query("SELECT * FROM capture_record WHERE id = :id")
     fun observeById(id: Long): Flow<CaptureRecordEntity?>
 

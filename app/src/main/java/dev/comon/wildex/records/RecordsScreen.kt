@@ -93,6 +93,15 @@ fun RecordsScreen(
         onExitEditMode: () -> Unit,
         onRequestDelete: () -> Unit,
     ) -> Unit = { _, _, _, _ -> },
+    onSearchModeStateChanged: (
+        isSearchMode: Boolean,
+        category: RecordsSearchCategory,
+        pendingQuery: String,
+        onCategoryChange: (RecordsSearchCategory) -> Unit,
+        onQueryChange: (String) -> Unit,
+        onSubmit: () -> Unit,
+        onExitSearch: () -> Unit,
+    ) -> Unit = { _, _, _, _, _, _, _ -> },
     pendingRecordId: Long? = null,
     onPendingRecordIdConsumed: () -> Unit = {},
 ) {
@@ -108,7 +117,11 @@ fun RecordsScreen(
     val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isDeleting by viewModel.isDeleting.collectAsStateWithLifecycle()
+    val isSearchMode by viewModel.isSearchMode.collectAsStateWithLifecycle()
+    val searchCategory by viewModel.searchCategory.collectAsStateWithLifecycle()
+    val pendingQuery by viewModel.pendingQuery.collectAsStateWithLifecycle()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showDateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(isEditMode, selectedIds) {
         onEditModeStateChanged(
@@ -116,6 +129,18 @@ fun RecordsScreen(
             selectedIds.size,
             viewModel::exitEditMode,
             { showDeleteDialog = true },
+        )
+    }
+
+    LaunchedEffect(isSearchMode, searchCategory, pendingQuery) {
+        onSearchModeStateChanged(
+            isSearchMode,
+            searchCategory,
+            pendingQuery,
+            viewModel::setSearchCategory,
+            viewModel::onPendingQueryChange,
+            viewModel::submitSearch,
+            viewModel::exitSearchMode,
         )
     }
 
@@ -132,6 +157,10 @@ fun RecordsScreen(
         viewModel.exitEditMode()
     }
 
+    BackHandler(enabled = isSearchMode && !canNavigateBack) {
+        viewModel.exitSearchMode()
+    }
+
     if (showDeleteDialog) {
         WildexConfirmDialog(
             titleText = "기록 삭제",
@@ -145,6 +174,17 @@ fun RecordsScreen(
 
     if (isDeleting) {
         RecordsDeletingDialog()
+    }
+
+    val dateFilterMillis by viewModel.dateFilterMillis.collectAsStateWithLifecycle()
+
+    if (showDateDialog) {
+        RecordsDateFilterDialog(
+            initialMillis = dateFilterMillis,
+            onDismiss = { showDateDialog = false },
+            onApply = { viewModel.setDateFilter(it) },
+            onClearAll = { viewModel.setDateFilter(null) },
+        )
     }
 
     SharedTransitionLayout(modifier = modifier.fillMaxSize()) {
@@ -164,6 +204,7 @@ fun RecordsScreen(
                     animatedVisibilityScope = this,
                     viewModel = viewModel,
                     onRecordClick = { id -> navController.navigate(WildexRecordDetailRoute(id)) },
+                    onCalendarClick = { showDateDialog = true },
                 )
             }
             composable<WildexRecordDetailRoute>(
@@ -190,13 +231,24 @@ private fun RecordsListContent(
     sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onRecordClick: (Long) -> Unit = {},
+    onCalendarClick: () -> Unit = {},
     viewModel: RecordsViewModel = viewModel(),
 ) {
     val lazyItems = viewModel.records.collectAsLazyPagingItems()
     val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val sortAscending by viewModel.sortAscending.collectAsStateWithLifecycle()
+    val dateFilterMillis by viewModel.dateFilterMillis.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        RecordsTopToolbar(
+            isDateFilterActive = dateFilterMillis != null,
+            isSortAscending = sortAscending,
+            onCalendarClick = onCalendarClick,
+            onSortToggle = viewModel::toggleSort,
+            onSearchClick = viewModel::enterSearchMode,
+        )
+        Box(modifier = Modifier.weight(1f)) {
         when {
             lazyItems.loadState.refresh is LoadState.Loading && lazyItems.itemCount == 0 -> {
                 CircularProgressIndicator(
@@ -270,6 +322,7 @@ private fun RecordsListContent(
                     }
                 }
             }
+        }
         }
     }
 }
