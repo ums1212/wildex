@@ -504,6 +504,9 @@ fun CaptureScreen(
                         ),
                         color = Color.White,
                     )
+                    CaptureAnalyzingCancelButton(
+                        onCancel = { viewModel.onIntent(CaptureIntent.CancelAnalysisClicked) },
+                    )
                 }
             }
         }
@@ -903,6 +906,54 @@ private fun CaptureShutterCluster(
                     modifier = Modifier.size(22.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CaptureAnalyzingCancelButton(
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val debouncedOnCancel = rememberDebounceClick(onCancel)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val depth = WildexDimens.shadowOffsetHard
+    val depthPressed = 2.dp
+    val shadowOffset = if (pressed) depthPressed else depth
+    val contentInset = if (pressed) depth - depthPressed else 0.dp
+
+    val outline = WildexTheme.extraColors.cartridgeOutline
+    val shadow = WildexTheme.extraColors.cartridgeHardShadow
+
+    Box(modifier = modifier.padding(end = depth, bottom = depth)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(shadowOffset, shadowOffset)
+                .background(shadow, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .offset(contentInset, contentInset)
+                .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = debouncedOnCancel,
+                )
+                .padding(horizontal = WildexDimens.gridMajor * 2, vertical = WildexDimens.gridStep * 2),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "CANCEL",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                ),
+                color = Color.White,
+            )
         }
     }
 }

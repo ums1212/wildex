@@ -79,6 +79,8 @@ sealed interface CaptureIntent {
         override fun hashCode(): Int = 31 * imageBytes.contentHashCode() + rotationDegrees
     }
     data class CaptureFailed(val error: Throwable) : CaptureIntent
+    /** 분석 오버레이의 취소 버튼 탭 */
+    data object CancelAnalysisClicked : CaptureIntent
 }
 
 /** UI가 한 번만 처리하면 되는 이벤트 (스낵바, 실제 촬영 트리거, 화면 이동 등) */
