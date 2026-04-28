@@ -109,10 +109,6 @@ import androidx.core.content.edit
 
 private const val TagCapture = "WildexCapture"
 
-/** 뷰파인더 가로:세로 (시안: 세로로 긴 프리뷰, 정사각형 아님) */
-private const val ViewfinderAspectWidth = 3f
-private const val ViewfinderAspectHeight = 4f
-
 @Composable
 fun CaptureScreen(
     onNavigateToBirdInfo: (speciesId: String, recordId: Long?) -> Unit,
@@ -425,28 +421,8 @@ fun CaptureScreen(
                 .fillMaxWidth()
                 .height(overlayZoneHeight)
                 .align(Alignment.TopCenter),
-            contentAlignment = Alignment.Center,
         ) {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                val aspectWOverH = ViewfinderAspectWidth / ViewfinderAspectHeight
-                val maxW = maxWidth
-                val maxH = maxHeight
-                val wFit = maxW
-                val hFit = wFit / aspectWOverH
-                val (iw, ih) = if (hFit <= maxH) {
-                    wFit to hFit
-                } else {
-                    val h = maxH
-                    val w = h * aspectWOverH
-                    w to h
-                }
-                Box(modifier = Modifier.size(iw, ih)) {
-                    CaptureViewfinderOverlays(modifier = Modifier.fillMaxSize())
-                }
-            }
+            CaptureViewfinderOverlays(modifier = Modifier.fillMaxSize())
         }
 
         AnimatedVisibility(
