@@ -54,8 +54,10 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             is CaptureIntent.LocationPermissionResult ->
                 _state.update { it.copy(hasLocationPermission = intent.granted) }
 
-            CaptureIntent.FlashOn -> _state.update { it.copy(flashOn = true) }
-            CaptureIntent.FlashOff -> _state.update { it.copy(flashOn = false) }
+            CaptureIntent.ToggleFlash -> _state.update { it.copy(flashOn = !it.flashOn) }
+            CaptureIntent.ToggleCaptureMode -> _state.update {
+                it.copy(captureMode = if (it.captureMode == CaptureMode.Scan) CaptureMode.Record else CaptureMode.Scan)
+            }
 
             CaptureIntent.ZoomIn -> _state.update { s ->
                 s.copy(

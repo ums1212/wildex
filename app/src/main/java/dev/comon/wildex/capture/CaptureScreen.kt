@@ -43,6 +43,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
@@ -69,6 +71,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -435,8 +439,9 @@ fun CaptureScreen(
         ) {
             CaptureControlPanel(
                 flashOn = state.flashOn,
-                onFlashOn = { viewModel.onIntent(CaptureIntent.FlashOn) },
-                onFlashOff = { viewModel.onIntent(CaptureIntent.FlashOff) },
+                captureMode = state.captureMode,
+                onToggleFlash = { viewModel.onIntent(CaptureIntent.ToggleFlash) },
+                onToggleCaptureMode = { viewModel.onIntent(CaptureIntent.ToggleCaptureMode) },
                 onZoomIn = { viewModel.onIntent(CaptureIntent.ZoomIn) },
                 onZoomOut = { viewModel.onIntent(CaptureIntent.ZoomOut) },
                 onCapture = { viewModel.onIntent(CaptureIntent.CaptureClicked) },
@@ -607,8 +612,9 @@ private fun CaptureViewfinderOverlays(modifier: Modifier = Modifier) {
 @Composable
 private fun CaptureControlPanel(
     flashOn: Boolean,
-    onFlashOn: () -> Unit,
-    onFlashOff: () -> Unit,
+    captureMode: CaptureMode,
+    onToggleFlash: () -> Unit,
+    onToggleCaptureMode: () -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onCapture: () -> Unit,
@@ -642,10 +648,11 @@ private fun CaptureControlPanel(
                 outline = outline,
                 onFace = onFace,
                 flashOn = flashOn,
+                captureMode = captureMode,
                 onZoomIn = onZoomIn,
                 onZoomOut = onZoomOut,
-                onFlashOn = onFlashOn,
-                onFlashOff = onFlashOff,
+                onToggleFlash = onToggleFlash,
+                onToggleCaptureMode = onToggleCaptureMode,
             )
             CaptureShutterCluster(
                 onCapture = onCapture,
@@ -662,27 +669,28 @@ private fun CaptureDpad(
     outline: Color,
     onFace: Color,
     flashOn: Boolean,
+    captureMode: CaptureMode,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
-    onFlashOn: () -> Unit,
-    onFlashOff: () -> Unit,
+    onToggleFlash: () -> Unit,
+    onToggleCaptureMode: () -> Unit,
 ) {
     // 각 방향 셀의 InteractionSource를 CaptureDpad가 소유 — 전체 위젯 기울기 계산에 사용
     val zoomInSource = remember { MutableInteractionSource() }
     val zoomOutSource = remember { MutableInteractionSource() }
-    val flashOnSource = remember { MutableInteractionSource() }
-    val flashOffSource = remember { MutableInteractionSource() }
+    val flashSource = remember { MutableInteractionSource() }
+    val modeSource = remember { MutableInteractionSource() }
 
     val zoomInPressed by zoomInSource.collectIsPressedAsState()
     val zoomOutPressed by zoomOutSource.collectIsPressedAsState()
-    val flashOnPressed by flashOnSource.collectIsPressedAsState()
-    val flashOffPressed by flashOffSource.collectIsPressedAsState()
+    val flashPressed by flashSource.collectIsPressedAsState()
+    val modePressed by modeSource.collectIsPressedAsState()
 
     val pressedDirection = when {
         zoomInPressed -> DpadDirection.Up
         zoomOutPressed -> DpadDirection.Down
-        flashOnPressed -> DpadDirection.Left
-        flashOffPressed -> DpadDirection.Right
+        flashPressed -> DpadDirection.Left
+        modePressed -> DpadDirection.Right
         else -> null
     }
 
@@ -750,15 +758,15 @@ private fun CaptureDpad(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DpadCell(
-                onClick = onFlashOn,
-                interactionSource = flashOnSource,
+                onClick = onToggleFlash,
+                interactionSource = flashSource,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.FlashOn,
-                    contentDescription = "플래시 켜기",
+                    imageVector = if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                    contentDescription = if (flashOn) "플래시 끄기" else "플래시 켜기",
                     tint = if (flashOn) accentOn else onFace,
                     modifier = Modifier.size(18.dp),
                 )
@@ -769,15 +777,15 @@ private fun CaptureDpad(
                     .fillMaxHeight(),
             )
             DpadCell(
-                onClick = onFlashOff,
-                interactionSource = flashOffSource,
+                onClick = onToggleCaptureMode,
+                interactionSource = modeSource,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.FlashOff,
-                    contentDescription = "플래시 끄기",
+                    imageVector = if (captureMode == CaptureMode.Scan) Icons.Filled.Search else Icons.Filled.PhotoLibrary,
+                    contentDescription = if (captureMode == CaptureMode.Scan) "스캔 모드" else "기록 모드",
                     tint = onFace,
                     modifier = Modifier.size(18.dp),
                 )

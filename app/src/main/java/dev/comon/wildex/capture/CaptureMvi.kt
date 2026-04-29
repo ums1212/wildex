@@ -1,10 +1,13 @@
 package dev.comon.wildex.capture
 
+enum class CaptureMode { Scan, Record }
+
 /** Capture 화면 MVI 계약: UI 상태는 StateFlow, 일회성 피드백은 Channel(→ Flow)로 전달합니다. */
 data class CaptureUiState(
     val hasCameraPermission: Boolean = false,
     val hasLocationPermission: Boolean = false,
     val flashOn: Boolean = false,
+    val captureMode: CaptureMode = CaptureMode.Scan,
     val zoomRatio: Float = 1f,
     val zoomMin: Float = 1f,
     val zoomMax: Float = 4f,
@@ -25,6 +28,7 @@ data class CaptureUiState(
         if (hasCameraPermission != other.hasCameraPermission) return false
         if (hasLocationPermission != other.hasLocationPermission) return false
         if (flashOn != other.flashOn) return false
+        if (captureMode != other.captureMode) return false
         if (zoomRatio != other.zoomRatio) return false
         if (zoomMin != other.zoomMin) return false
         if (zoomMax != other.zoomMax) return false
@@ -41,6 +45,7 @@ data class CaptureUiState(
         var result = hasCameraPermission.hashCode()
         result = 31 * result + hasLocationPermission.hashCode()
         result = 31 * result + flashOn.hashCode()
+        result = 31 * result + captureMode.hashCode()
         result = 31 * result + zoomRatio.hashCode()
         result = 31 * result + zoomMin.hashCode()
         result = 31 * result + zoomMax.hashCode()
@@ -57,12 +62,12 @@ data class CaptureUiState(
 sealed interface CaptureIntent {
     data class PermissionResult(val granted: Boolean) : CaptureIntent
     data class LocationPermissionResult(val granted: Boolean) : CaptureIntent
-    data object FlashOn : CaptureIntent
-    data object FlashOff : CaptureIntent
+    data object ToggleFlash : CaptureIntent
     data object ZoomIn : CaptureIntent
     data object ZoomOut : CaptureIntent
     data object ToggleIso : CaptureIntent
     data object ToggleWb : CaptureIntent
+    data object ToggleCaptureMode : CaptureIntent
     /** 셔터 탭 — VM이 [CaptureUiEvent.TakePicture]를 방출 */
     data object CaptureClicked : CaptureIntent
     data class ZoomBoundsUpdated(val min: Float, val max: Float) : CaptureIntent
