@@ -15,6 +15,8 @@ data class CaptureUiState(
     val wbDay: Boolean = true,
     /** AI 인식 및 조류 정보 검색 진행 중 여부 — true 일 때 오버레이 표시 및 셔터 잠금 */
     val isAnalyzing: Boolean = false,
+    /** Record 모드 미디어+DB 저장 중 여부 — true 면 셔터 잠금. 분석 오버레이는 띄우지 않음. */
+    val isSaving: Boolean = false,
     /** 분석 중 카메라 프리뷰 위에 덮을 정지 프레임 JPEG 바이트 — null 이면 라이브 프리뷰 노출 */
     val frozenFrameBytes: ByteArray? = null,
     val frozenFrameRotation: Int = 0,
@@ -35,6 +37,7 @@ data class CaptureUiState(
         if (isoAuto != other.isoAuto) return false
         if (wbDay != other.wbDay) return false
         if (isAnalyzing != other.isAnalyzing) return false
+        if (isSaving != other.isSaving) return false
         if (frozenFrameRotation != other.frozenFrameRotation) return false
         if (!frozenFrameBytes.contentEquals(other.frozenFrameBytes)) return false
 
@@ -52,6 +55,7 @@ data class CaptureUiState(
         result = 31 * result + isoAuto.hashCode()
         result = 31 * result + wbDay.hashCode()
         result = 31 * result + isAnalyzing.hashCode()
+        result = 31 * result + isSaving.hashCode()
         result = 31 * result + frozenFrameRotation
         result = 31 * result + (frozenFrameBytes?.contentHashCode() ?: 0)
         return result

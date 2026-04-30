@@ -74,8 +74,8 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             CaptureIntent.ToggleWb -> _state.update { it.copy(wbDay = !it.wbDay) }
 
             CaptureIntent.CaptureClicked -> {
-                // 촬영 진행 중이거나 분석 중이면 연타 무시
-                if (isCaptureInProgress || _state.value.isAnalyzing) return
+                // 촬영 진행 중이거나 분석/저장 중이면 연타 무시
+                if (isCaptureInProgress || _state.value.isAnalyzing || _state.value.isSaving) return
                 isCaptureInProgress = true
                 viewModelScope.launch {
                     _events.send(CaptureUiEvent.TakePicture)
@@ -99,72 +99,9 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
 
             is CaptureIntent.CaptureSucceeded -> {
                 isCaptureInProgress = false
-                analysisJob = viewModelScope.launch {
-                    val hasLocationPerm = _state.value.hasLocationPermission
-                    // NonCancellable: 부모 Job 취소와 무관하게 saveCapture 를 완주시켜
-                    // finally 에서 recordId 로 deleteRecord 를 호출할 수 있도록 보장
-                    val saveDeferred = async(NonCancellable) {
-                        captureRecordRepository.saveCapture(
-                            imageBytes = intent.imageBytes,
-                            rotationDegrees = intent.rotationDegrees,
-                            hasLocationPermission = hasLocationPerm,
-                        )
-                    }
-                    var completedTerminally = false
-                    try {
-                        birdImageAnalyzer.recognizeBird(intent.imageBytes, intent.rotationDegrees)
-                            .catch { e ->
-                                emit(BirdRecognitionState.Error(mapToRecognitionError(e)))
-                            }
-                            .collect { recognitionState ->
-                                when (recognitionState) {
-                                    BirdRecognitionState.Analyzing -> {
-                                        _state.update {
-                                            it.copy(
-                                                isAnalyzing = true,
-                                                frozenFrameBytes = intent.imageBytes,
-                                                frozenFrameRotation = intent.rotationDegrees,
-                                            )
-                                        }
-                                    }
-                                    is BirdRecognitionState.Recognized -> {
-                                        val name = recognitionState.birdName
-                                        val category = recognitionState.category
-                                        val recordId = saveDeferred.await()
-                                        recordId?.let { id ->
-                                            captureRecordRepository.updateRecognition(id, name, category)
-                                        }
-                                        completedTerminally = true
-                                        searchBirdAndNavigate(name, recordId)
-                                    }
-                                    is BirdRecognitionState.Error -> {
-                                        completedTerminally = true
-                                        _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
-                                        _events.send(
-                                            CaptureUiEvent.ShowSnackbar(recognitionState.error.userMessage),
-                                        )
-                                    }
-                                }
-                            }
-                    } finally {
-                        // 사용자 취소 시에만 실행 (Recognized/Error 는 completedTerminally = true)
-                        if (!completedTerminally) {
-                            withContext(NonCancellable) {
-                                val recordId = saveDeferred.await()
-                                if (recordId != null) {
-                                    captureRecordRepository.deleteRecord(recordId)
-                                }
-                                _state.update {
-                                    it.copy(
-                                        isAnalyzing = false,
-                                        frozenFrameBytes = null,
-                                        frozenFrameRotation = 0,
-                                    )
-                                }
-                                _events.send(CaptureUiEvent.ShowSnackbar("분석을 취소했습니다"))
-                            }
-                        }
-                    }
+                when (_state.value.captureMode) {
+                    CaptureMode.Scan -> runScanFlow(intent.imageBytes, intent.rotationDegrees)
+                    CaptureMode.Record -> runRecordFlow(intent.imageBytes, intent.rotationDegrees)
                 }
             }
 
@@ -181,6 +118,81 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                         CaptureUiEvent.ShowSnackbar(BirdRecognitionError.UNKNOWN.userMessage),
                     )
                 }
+            }
+        }
+    }
+
+    private fun runScanFlow(imageBytes: ByteArray, rotationDegrees: Int) {
+        analysisJob = viewModelScope.launch {
+            val hasLocationPerm = _state.value.hasLocationPermission
+            // NonCancellable: 사용자 취소 후에도 finally 에서 deleteRecord 를 호출하기 위해 recordId 확보
+            val saveDeferred = async(NonCancellable) {
+                val uri = captureRecordRepository.saveImageToMediaStore(imageBytes, rotationDegrees)
+                uri?.let { captureRecordRepository.insertCaptureRecord(it, hasLocationPerm) }
+            }
+            var completedTerminally = false
+            try {
+                birdImageAnalyzer.recognizeBird(imageBytes, rotationDegrees)
+                    .catch { e -> emit(BirdRecognitionState.Error(mapToRecognitionError(e))) }
+                    .collect { recognitionState ->
+                        when (recognitionState) {
+                            BirdRecognitionState.Analyzing -> {
+                                _state.update {
+                                    it.copy(
+                                        isAnalyzing = true,
+                                        frozenFrameBytes = imageBytes,
+                                        frozenFrameRotation = rotationDegrees,
+                                    )
+                                }
+                            }
+                            is BirdRecognitionState.Recognized -> {
+                                val name = recognitionState.birdName
+                                val category = recognitionState.category
+                                val recordId = saveDeferred.await()
+                                recordId?.let { id ->
+                                    captureRecordRepository.updateRecognition(id, name, category)
+                                }
+                                completedTerminally = true
+                                searchBirdAndNavigate(name, recordId)
+                            }
+                            is BirdRecognitionState.Error -> {
+                                completedTerminally = true
+                                _state.update { it.copy(isAnalyzing = false, frozenFrameBytes = null) }
+                                _events.send(CaptureUiEvent.ShowSnackbar(recognitionState.error.userMessage))
+                            }
+                        }
+                    }
+            } finally {
+                // 사용자 취소 시에만 실행 (Recognized/Error 는 completedTerminally = true)
+                if (!completedTerminally) {
+                    withContext(NonCancellable) {
+                        val recordId = saveDeferred.await()
+                        if (recordId != null) captureRecordRepository.deleteRecord(recordId)
+                        _state.update {
+                            it.copy(isAnalyzing = false, frozenFrameBytes = null, frozenFrameRotation = 0)
+                        }
+                        _events.send(CaptureUiEvent.ShowSnackbar("분석을 취소했습니다"))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun runRecordFlow(imageBytes: ByteArray, rotationDegrees: Int) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSaving = true) }
+            try {
+                val uri = captureRecordRepository.saveImageToMediaStore(imageBytes, rotationDegrees)
+                if (uri == null) {
+                    _events.send(CaptureUiEvent.ShowSnackbar(BirdRecognitionError.UNKNOWN.userMessage))
+                    return@launch
+                }
+                captureRecordRepository.insertCaptureRecord(uri, _state.value.hasLocationPermission)
+                _events.send(CaptureUiEvent.ShowSnackbar("기록을 저장했습니다"))
+            } catch (e: Throwable) {
+                _events.send(CaptureUiEvent.ShowSnackbar(BirdRecognitionError.UNKNOWN.userMessage))
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
         }
     }

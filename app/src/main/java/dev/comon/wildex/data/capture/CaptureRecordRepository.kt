@@ -1,6 +1,7 @@
 package dev.comon.wildex.data.capture
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -15,15 +16,19 @@ class CaptureRecordRepository(context: Context) {
     private val appContext = context.applicationContext
     private val dao = WildexDatabase.getInstance(appContext).captureRecordDao()
 
-    suspend fun saveCapture(
-        imageBytes: ByteArray,
-        rotationDegrees: Int,
-        hasLocationPermission: Boolean,
-    ): Long? = withContext(Dispatchers.IO) {
-        runCatching {
-            val uri = MediaStoreImageSaver.save(appContext, imageBytes, rotationDegrees)
-            val capturedAt = System.currentTimeMillis()
+    suspend fun saveImageToMediaStore(imageBytes: ByteArray, rotationDegrees: Int): Uri? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                MediaStoreImageSaver.save(appContext, imageBytes, rotationDegrees)
+            }.getOrElse {
+                Log.e(TAG, "미디어 저장 실패", it)
+                null
+            }
+        }
 
+    suspend fun insertCaptureRecord(imageUri: Uri, hasLocationPermission: Boolean): Long =
+        withContext(Dispatchers.IO) {
+            val capturedAt = System.currentTimeMillis()
             val (latitude, longitude, address) = if (hasLocationPermission) {
                 val location = LocationResolver.currentLocation(appContext)
                 if (location != null) {
@@ -36,21 +41,16 @@ class CaptureRecordRepository(context: Context) {
             } else {
                 Triple<Double?, Double?, String>(null, null, "권한 거절")
             }
-
             dao.insert(
                 CaptureRecordEntity(
-                    imageUri = uri.toString(),
+                    imageUri = imageUri.toString(),
                     capturedAt = capturedAt,
                     latitude = latitude,
                     longitude = longitude,
                     address = address,
                 ),
             )
-        }.getOrElse {
-            Log.e(TAG, "저장 실패", it)
-            null
         }
-    }
 
     suspend fun updateRecognition(id: Long, name: String, category: String) {
         runCatching { dao.updateRecognition(id, name, category) }
