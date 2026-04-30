@@ -38,27 +38,27 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -75,6 +75,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
@@ -110,9 +111,9 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import androidx.core.content.edit
-import kotlinx.coroutines.launch
 
 private const val TagCapture = "WildexCapture"
+private const val SnackbarDurationMs = 2500L
 
 @Composable
 fun CaptureScreen(
@@ -125,7 +126,15 @@ fun CaptureScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    var displayedMessage by remember { mutableStateOf("") }
+    LaunchedEffect(snackbarMessage) {
+        if (snackbarMessage != null) {
+            displayedMessage = snackbarMessage!!
+            delay(SnackbarDurationMs)
+            snackbarMessage = null
+        }
+    }
 
     // 현재 디스플레이 회전값 — ImageCapture targetRotation 설정에 사용
     val currentView = LocalView.current
@@ -225,7 +234,6 @@ fun CaptureScreen(
     androidx.activity.compose.BackHandler(enabled = state.isAnalyzing) {}
 
     LaunchedEffect(Unit) {
-        var snackbarJob: kotlinx.coroutines.Job? = null
         viewModel.events.collect { event ->
             when (event) {
                 CaptureUiEvent.TakePicture -> {
@@ -260,11 +268,7 @@ fun CaptureScreen(
                     )
                 }
                 is CaptureUiEvent.ShowSnackbar -> {
-                    snackbarJob?.cancel()
-                    snackbarHostState.currentSnackbarData?.dismiss()
-                    snackbarJob = launch {
-                        snackbarHostState.showSnackbar(event.message)
-                    }
+                    snackbarMessage = event.message
                 }
                 is CaptureUiEvent.NavigateToBirdInfo -> {
                     onNavigateToBirdInfo(event.speciesId, event.recordId)
@@ -498,13 +502,22 @@ fun CaptureScreen(
             }
         }
 
-        // Snackbar — 오버레이보다 아래에 배치해 항상 표시
-        SnackbarHost(
-            hostState = snackbarHostState,
+        AnimatedVisibility(
+            visible = snackbarMessage != null,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = controlBarHeight + WildexDimens.gridMajor),
-        )
+                .padding(bottom = controlBarHeight + WildexDimens.gridMajor)
+                .padding(horizontal = WildexDimens.gridMajor),
+        ) {
+            CaptureCartridgeSnackbar(
+                message = displayedMessage,
+                modifier = Modifier
+                    .widthIn(max = maxWidth - WildexDimens.gridMajor * 2)
+                    .wrapContentWidth(),
+            )
+        }
     }
 }
 
@@ -943,6 +956,42 @@ private fun CaptureAnalyzingCancelButton(
                     fontFamily = FontFamily.Monospace,
                 ),
                 color = Color.White,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CaptureCartridgeSnackbar(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    val depth = WildexDimens.shadowOffsetHard
+    val outline = WildexTheme.extraColors.cartridgeOutline
+    val shadow = WildexTheme.extraColors.cartridgeHardShadow
+    val panelBg = MaterialTheme.colorScheme.surfaceContainerLowest
+    val onPanel = MaterialTheme.colorScheme.onSurface
+
+    Box(modifier = modifier.padding(end = depth, bottom = depth)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(depth, depth)
+                .background(shadow, RectangleShape),
+        )
+        Box(
+            modifier = Modifier
+                .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
+                .background(panelBg, RectangleShape)
+                .padding(
+                    horizontal = WildexDimens.gridMajor,
+                    vertical = WildexDimens.gridStep * 2,
+                ),
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                color = onPanel,
             )
         }
     }
