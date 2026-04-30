@@ -97,7 +97,7 @@ fun TitleScreen(
     modifier: Modifier = Modifier,
     userNickname: String = "TRAINER_L_10",
     isLoading: Boolean = false,
-    isLoggedIn: Boolean = false,
+    isLoggedIn: Boolean? = null,
 ) {
     val inspection = LocalInspectionMode.current
     var showExitDialog by remember { mutableStateOf(false) }
@@ -164,10 +164,10 @@ fun TitleScreen(
 private fun TitleScreenScrollableLayout(
     isDarkTheme: Boolean,
     userNickname: String,
-    isLoggedIn: Boolean,
+    isLoggedIn: Boolean?,
     onLoginClick: () -> Unit,
     onGuideClick: () -> Unit,
-    modifier: Modifier = Modifier, // modifier 추가
+    modifier: Modifier = Modifier,
 ) {
     val configuration = LocalConfiguration.current
     val windowInfo = LocalWindowInfo.current
@@ -458,7 +458,7 @@ private fun TitleCentralPanel(
     shadowOffset: Dp,
     onLoginClick: () -> Unit,
     landscapeCompact: Boolean,
-    isLoggedIn: Boolean,
+    isLoggedIn: Boolean?,
 ) {
     val outline = WildexTheme.extraColors.cartridgeOutline
     val hard = WildexTheme.extraColors.cartridgeHardShadow
@@ -558,9 +558,11 @@ private fun PanelBrackets(
 @Composable
 private fun LogInBlock(
     landscapeCompact: Boolean,
-    isLoggedIn: Boolean,
+    isLoggedIn: Boolean?,
     onLoginClick: () -> Unit,
 ) {
+    if (isLoggedIn == null) return
+
     var navigating by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val style =

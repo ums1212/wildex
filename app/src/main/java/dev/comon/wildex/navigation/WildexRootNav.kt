@@ -99,7 +99,10 @@ fun WildexRoot(isDarkTheme: Boolean) {
                 },
             ) {
                 val sessionStatus by SupabaseClient.client.auth.sessionStatus.collectAsState()
-                val isLoggedIn = sessionStatus is SessionStatus.Authenticated
+                val isLoggedIn: Boolean? = when (sessionStatus) {
+                    is SessionStatus.Initializing -> null
+                    else -> sessionStatus is SessionStatus.Authenticated
+                }
 
                 var isLoggingIn by remember { mutableStateOf(false) }
                 val googleLoginAction = SupabaseClient.client.composeAuth.rememberSignInWithGoogle(
@@ -112,7 +115,7 @@ fun WildexRoot(isDarkTheme: Boolean) {
                         }
                     },
                 )
-                val userNickname = if (isLoggedIn) {
+                val userNickname = if (isLoggedIn == true) {
                     SupabaseClient.client.auth.currentUserOrNull()
                         ?.userMetadata
                         ?.get("full_name")
@@ -140,7 +143,7 @@ fun WildexRoot(isDarkTheme: Boolean) {
                     isLoading = isLoggingIn,
                     isLoggedIn = isLoggedIn,
                     onLoginClick = {
-                        if (isLoggedIn || isEmulator) {
+                        if (isLoggedIn == true || isEmulator) {
                             navController.navigate(WildexMainShellRoute) {
                                 popUpTo(WildexTitleRoute) { inclusive = true }
                             }
