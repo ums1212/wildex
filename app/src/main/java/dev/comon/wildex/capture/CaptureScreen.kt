@@ -110,6 +110,7 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import androidx.core.content.edit
+import kotlinx.coroutines.launch
 
 private const val TagCapture = "WildexCapture"
 
@@ -224,6 +225,7 @@ fun CaptureScreen(
     androidx.activity.compose.BackHandler(enabled = state.isAnalyzing) {}
 
     LaunchedEffect(Unit) {
+        var snackbarJob: kotlinx.coroutines.Job? = null
         viewModel.events.collect { event ->
             when (event) {
                 CaptureUiEvent.TakePicture -> {
@@ -258,7 +260,11 @@ fun CaptureScreen(
                     )
                 }
                 is CaptureUiEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(event.message)
+                    snackbarJob?.cancel()
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    snackbarJob = launch {
+                        snackbarHostState.showSnackbar(event.message)
+                    }
                 }
                 is CaptureUiEvent.NavigateToBirdInfo -> {
                     onNavigateToBirdInfo(event.speciesId, event.recordId)

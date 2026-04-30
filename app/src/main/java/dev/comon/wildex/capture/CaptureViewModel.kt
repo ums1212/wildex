@@ -55,8 +55,13 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                 _state.update { it.copy(hasLocationPermission = intent.granted) }
 
             CaptureIntent.ToggleFlash -> _state.update { it.copy(flashOn = !it.flashOn) }
-            CaptureIntent.ToggleCaptureMode -> _state.update {
-                it.copy(captureMode = if (it.captureMode == CaptureMode.Scan) CaptureMode.Record else CaptureMode.Scan)
+            CaptureIntent.ToggleCaptureMode -> {
+                val newMode = if (_state.value.captureMode == CaptureMode.Scan) CaptureMode.Record else CaptureMode.Scan
+                _state.update { it.copy(captureMode = newMode) }
+                viewModelScope.launch {
+                    val message = if (newMode == CaptureMode.Scan) "스캔 모드로 전환합니다." else "기록 모드로 전환합니다."
+                    _events.send(CaptureUiEvent.ShowSnackbar(message))
+                }
             }
 
             CaptureIntent.ZoomIn -> _state.update { s ->
