@@ -12,10 +12,19 @@ interface CaptureRecordDao {
     suspend fun insert(record: CaptureRecordEntity): Long
 
     @Query("UPDATE capture_record SET name = :name, category = :category WHERE id = :id")
-    suspend fun updateRecognition(id: Long, name: String, category: String)
+    suspend fun updateRecognition(id: Long, name: String, category: String?)
 
     @Query("UPDATE capture_record SET memo = :memo WHERE id = :id")
     suspend fun updateMemo(id: Long, memo: String?)
+
+    @Query("UPDATE capture_record SET name = :name WHERE id = :id")
+    suspend fun updateName(id: Long, name: String?)
+
+    @Query("UPDATE capture_record SET category = :category WHERE id = :id")
+    suspend fun updateCategory(id: Long, category: String?)
+
+    @Query("UPDATE capture_record SET address = :address WHERE id = :id")
+    suspend fun updateAddress(id: Long, address: String)
 
     @Query("SELECT * FROM capture_record ORDER BY capturedAt DESC")
     fun observeAll(): Flow<List<CaptureRecordEntity>>

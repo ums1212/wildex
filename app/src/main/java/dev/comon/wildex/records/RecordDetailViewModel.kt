@@ -27,28 +27,54 @@ class RecordDetailViewModel(
 
     private val _memoInput = MutableStateFlow<String?>(null)
     val memoInput: StateFlow<String?> = _memoInput
+    private val _nameInput = MutableStateFlow<String?>(null)
+    val nameInput: StateFlow<String?> = _nameInput
+    private val _categoryInput = MutableStateFlow<String?>(null)
+    val categoryInput: StateFlow<String?> = _categoryInput
+    private val _addressInput = MutableStateFlow<String?>(null)
+    val addressInput: StateFlow<String?> = _addressInput
 
     init {
         viewModelScope.launch {
             record.filterNotNull().collect { rec ->
-                if (_memoInput.value == null) {
-                    _memoInput.value = rec.memo ?: ""
-                }
+                if (_memoInput.value == null) _memoInput.value = rec.memo ?: ""
+                if (_nameInput.value == null) _nameInput.value = rec.name ?: ""
+                if (_categoryInput.value == null) _categoryInput.value = rec.category ?: ""
+                if (_addressInput.value == null) _addressInput.value = rec.address
             }
         }
         viewModelScope.launch {
-            _memoInput
-                .filterNotNull()
-                .debounce(500)
-                .distinctUntilChanged()
-                .collect { memo ->
-                    repository.updateMemo(recordId, memo)
-                }
+            _memoInput.filterNotNull().debounce(500).distinctUntilChanged()
+                .collect { repository.updateMemo(recordId, it) }
+        }
+        viewModelScope.launch {
+            _nameInput.filterNotNull().debounce(500).distinctUntilChanged()
+                .collect { repository.updateName(recordId, it) }
+        }
+        viewModelScope.launch {
+            _categoryInput.filterNotNull().debounce(500).distinctUntilChanged()
+                .collect { repository.updateCategory(recordId, it) }
+        }
+        viewModelScope.launch {
+            _addressInput.filterNotNull().debounce(500).distinctUntilChanged()
+                .collect { repository.updateAddress(recordId, it) }
         }
     }
 
     fun onMemoChange(text: String) {
         _memoInput.value = text.take(500)
+    }
+
+    fun onNameChange(text: String) {
+        _nameInput.value = text.take(50)
+    }
+
+    fun onCategoryChange(text: String) {
+        _categoryInput.value = text.take(30)
+    }
+
+    fun onAddressChange(text: String) {
+        _addressInput.value = text.take(100)
     }
 
     fun deleteRecord(onDeleted: () -> Unit) {

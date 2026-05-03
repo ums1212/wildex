@@ -25,11 +25,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -75,6 +78,7 @@ import dev.comon.wildex.data.capture.CaptureRecordEntity
 import dev.comon.wildex.ui.theme.WildexColorRoles
 import dev.comon.wildex.ui.theme.WildexDimens
 import dev.comon.wildex.ui.theme.WildexTheme
+import dev.comon.wildex.WildexCategory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -98,6 +102,9 @@ fun RecordDetailScreen(
     )
     val record by viewModel.record.collectAsStateWithLifecycle()
     val memoInput by viewModel.memoInput.collectAsStateWithLifecycle()
+    val nameInput by viewModel.nameInput.collectAsStateWithLifecycle()
+    val categoryInput by viewModel.categoryInput.collectAsStateWithLifecycle()
+    val addressInput by viewModel.addressInput.collectAsStateWithLifecycle()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -125,6 +132,12 @@ fun RecordDetailScreen(
                 record = record!!,
                 memo = memoInput ?: "",
                 onMemoChange = viewModel::onMemoChange,
+                name = nameInput ?: "",
+                onNameChange = viewModel::onNameChange,
+                category = categoryInput ?: "",
+                onCategoryChange = viewModel::onCategoryChange,
+                address = addressInput ?: "",
+                onAddressChange = viewModel::onAddressChange,
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 onDeleteClick = { showDeleteDialog = true },
@@ -140,6 +153,12 @@ private fun RecordDetailContent(
     record: CaptureRecordEntity,
     memo: String,
     onMemoChange: (String) -> Unit,
+    name: String,
+    onNameChange: (String) -> Unit,
+    category: String,
+    onCategoryChange: (String) -> Unit,
+    address: String,
+    onAddressChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
@@ -147,6 +166,18 @@ private fun RecordDetailContent(
 ) {
     var showFullScreen by remember { mutableStateOf(false) }
     var retryKey by remember { mutableIntStateOf(0) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
+
+    if (showCategoryDialog) {
+        CategorySelectorDialog(
+            currentCategory = category,
+            onSelect = { selected ->
+                onCategoryChange(selected)
+                showCategoryDialog = false
+            },
+            onDismiss = { showCategoryDialog = false },
+        )
+    }
 
     if (showFullScreen && record.imageUri.isNotBlank()) {
         RecordImageFullScreenViewer(
@@ -225,13 +256,30 @@ private fun RecordDetailContent(
                     .padding(horizontal = WildexDimens.gridMajor, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                RecordInfoRow(label = "NAME", value = record.name ?: "미확인")
+                EditableRecordInfoRow(
+                    label = "NAME",
+                    value = name,
+                    onValueChange = onNameChange,
+                    maxLength = NAME_MAX_LENGTH,
+                    singleLine = true,
+                    placeholder = "미확인",
+                )
                 RecordDivider()
-                RecordInfoRow(label = "CATEGORY", value = record.category ?: "—")
+                CategorySelectorRow(
+                    currentCategory = category,
+                    onClick = { showCategoryDialog = true },
+                )
                 RecordDivider()
                 RecordInfoRow(label = "DATE", value = formatDetailTimestamp(record.capturedAt))
                 RecordDivider()
-                RecordInfoRow(label = "LOCATION", value = record.address)
+                EditableRecordInfoRow(
+                    label = "LOCATION",
+                    value = address,
+                    onValueChange = onAddressChange,
+                    maxLength = LOCATION_MAX_LENGTH,
+                    singleLine = false,
+                    placeholder = "주소 입력",
+                )
                 if (record.latitude != null && record.longitude != null) {
                     RecordDivider()
                     RecordInfoRow(
@@ -348,6 +396,224 @@ private fun RecordInfoRow(label: String, value: String) {
 }
 
 @Composable
+private fun CategorySelectorRow(
+    currentCategory: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "CATEGORY",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            ),
+            color = WildexColorRoles.missionCtaBackground(),
+            modifier = Modifier.padding(end = 12.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = WildexCategory.entries.find { it.titleText == currentCategory }?.koreanName
+                    ?: currentCategory.ifEmpty { "—" },
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (currentCategory.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategorySelectorDialog(
+    currentCategory: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val depth = WildexDimens.shadowOffsetHard
+    val outline = WildexTheme.extraColors.cartridgeOutline
+    val hardShadow = WildexTheme.extraColors.cartridgeHardShadow
+    val missionBg = WildexColorRoles.missionCtaBackground()
+    val missionFg = WildexColorRoles.missionCtaForeground()
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(end = depth, bottom = depth),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .offset(depth, depth)
+                        .background(hardShadow, RectangleShape),
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .border(WildexDimens.borderStrokeChunky, outline, RectangleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RectangleShape),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(missionBg, RectangleShape)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "CATEGORY",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                            ),
+                            color = missionFg,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(WildexDimens.borderStrokeChunky)
+                            .background(outline, RectangleShape),
+                    )
+                    WildexCategory.entries.forEachIndexed { index, cat ->
+                        val isSelected = cat.titleText == currentCategory
+                        val bgColor = if (isSelected) missionBg else MaterialTheme.colorScheme.surfaceContainerLowest
+                        val textColor = if (isSelected) missionFg else MaterialTheme.colorScheme.onSurface
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(bgColor, RectangleShape)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    role = Role.Button,
+                                    onClick = { onSelect(cat.titleText) },
+                                )
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                        ) {
+                            Text(
+                                text = cat.koreanName,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                ),
+                                color = textColor,
+                            )
+                        }
+                        if (index < WildexCategory.entries.lastIndex) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(WildexDimens.borderStrokeChunky)
+                                    .background(outline, RectangleShape),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditableRecordInfoRow(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    maxLength: Int,
+    singleLine: Boolean,
+    placeholder: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            ),
+            color = WildexColorRoles.missionCtaBackground(),
+            modifier = Modifier.padding(end = 12.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            BasicTextField(
+                value = value,
+                onValueChange = { onValueChange(it.take(maxLength)) },
+                singleLine = singleLine,
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth(),
+            ) { innerTextField ->
+                Box {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Text(
+                    text = "${value.length} / $maxLength",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = if (value.length >= maxLength) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun RecordDivider() {
     HorizontalDivider(
         modifier = Modifier
@@ -429,6 +695,8 @@ private fun MemoCard(
 }
 
 private const val MEMO_MAX_LENGTH = 500
+private const val NAME_MAX_LENGTH = 50
+private const val LOCATION_MAX_LENGTH = 100
 
 private fun formatDetailTimestamp(millis: Long): String =
     SimpleDateFormat("yyyy.MM.dd HH:mm:ss", Locale.getDefault()).format(Date(millis))

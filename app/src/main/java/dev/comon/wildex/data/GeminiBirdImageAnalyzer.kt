@@ -8,6 +8,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.content
+import dev.comon.wildex.WildexCategory
 import dev.comon.wildex.capture.BirdRecognitionError
 import dev.comon.wildex.capture.BirdRecognitionState
 import kotlinx.coroutines.Dispatchers
@@ -20,10 +21,6 @@ import java.net.UnknownHostException
 private const val TAG = "GeminiBirdAnalyzer"
 private const val MODEL_NAME = "gemini-3-flash-preview"
 
-/**
- * Firebase AI Logic를 사용한 [BirdImageAnalyzer] 구현체.
- * 이미지를 Gemini 비전 모델에 전달하여 조류 한국어 이름을 추출한다.
- */
 class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
 
     private val model = Firebase.ai(backend = GenerativeBackend.googleAI())
@@ -51,7 +48,6 @@ class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
             val text = response.text?.trim().orEmpty()
             Log.d(TAG, "Gemini 원본 응답: $text")
 
-            // 마크다운 코드 블록이 포함된 경우 제거
             val json = text
                 .removePrefix("```json")
                 .removePrefix("```")
@@ -75,8 +71,8 @@ class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
             }
 
             val categoryMatch = Regex("\"category\"\\s*:\\s*\"([^\"]+)\"").find(json)
-            val category = categoryMatch?.groupValues?.getOrNull(1)?.trim()
-                ?.ifBlank { null } ?: "조류"
+            val rawCategory = categoryMatch?.groupValues?.getOrNull(1)?.trim()
+            val category = WildexCategory.entries.find { it.titleText == rawCategory }?.titleText
 
             Log.d(TAG, "인식 성공 → birdName=$birdName, category=$category")
             emit(BirdRecognitionState.Recognized(birdName, category))
@@ -117,7 +113,7 @@ class GeminiBirdImageAnalyzer : BirdImageAnalyzer {
 반드시 아래 JSON 형식으로만 응답하세요. 마크다운이나 다른 텍스트는 포함하지 마세요.
 
 조류가 있는 경우:
-{"found": true, "koreanName": "조류의 한국어 이름", "category": "조류"}
+{"found": true, "koreanName": "조류의 한국어 이름", "category": "${WildexCategory.BIRDS.titleText}"}
 
 조류가 없는 경우:
 {"found": false}

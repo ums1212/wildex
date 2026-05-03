@@ -41,6 +41,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.comon.wildex.WildexCategory
 import dev.comon.wildex.component.WildexMenuButton
 import dev.comon.wildex.component.WildexMenuButtonStyle
 import dev.comon.wildex.journal.birdinfo.BirdInfoScreen
@@ -106,9 +107,7 @@ fun JournalScreen(
                 onSearchModeStateChanged(false, "", {}, {}, {})
             }
             JournalCategoryScreen(
-                onBirdListClick = {
-                    navController.navigate(WildexBirdListRoute)
-                },
+                onBirdListClick = { navController.navigate(WildexBirdListRoute) },
             )
         }
         composable<WildexBirdListRoute>(
@@ -183,19 +182,12 @@ fun JournalScreen(
     }
 }
 
-private data class JournalCategoryItem(
-    val titleText: String,
-    val subtitleText: String,
-    val icon: ImageVector,
-    val enabled: Boolean,
-)
-
-private val journalCategories = listOf(
-    JournalCategoryItem("Birds", "Aves Classis", Icons.Filled.SetMeal, enabled = true),
-    JournalCategoryItem("Mammals", "Mammalia Classis", Icons.Filled.Pets, enabled = false),
-    JournalCategoryItem("Insects", "Insecta Classis", Icons.Filled.BugReport, enabled = false),
-    JournalCategoryItem("Plants", "Plantae Kingdom", Icons.Filled.LocalFlorist, enabled = false),
-)
+private fun WildexCategory.icon(): ImageVector = when (this) {
+    WildexCategory.BIRDS -> Icons.Filled.SetMeal
+    WildexCategory.MAMMALS -> Icons.Filled.Pets
+    WildexCategory.INSECTS -> Icons.Filled.BugReport
+    WildexCategory.PLANTS -> Icons.Filled.LocalFlorist
+}
 
 @Composable
 private fun JournalCategoryScreen(
@@ -210,36 +202,37 @@ private fun JournalCategoryScreen(
             .padding(WildexDimens.gridMajor),
         verticalArrangement = Arrangement.spacedBy(WildexDimens.gridMajor),
     ) {
-        journalCategories.forEach { category ->
+        WildexCategory.entries.forEach { category ->
             JournalScreenMenuButton(
-                item = category,
-                onClick = if (category.enabled && category.titleText == "Birds") onBirdListClick else ({}),
+                category = category,
+                onClick = { if (category == WildexCategory.BIRDS) onBirdListClick() },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
     }
 }
 
-/** Journal 카테고리 화면 전용 [WildexMenuButton] 래퍼: 비활성 시 "준비중" 오버레이 + 기본 카트리지 패딩. */
+private val enabledCategories = setOf(WildexCategory.BIRDS)
+
 @Composable
 private fun JournalScreenMenuButton(
-    item: JournalCategoryItem,
+    category: WildexCategory,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val enabled = category in enabledCategories
     Box(modifier = modifier) {
         WildexMenuButton(
-            titleText = item.titleText,
-            subtitleText = item.subtitleText,
-            imageVector = item.icon,
+            titleText = category.titleText,
+            subtitleText = category.subtitleText,
+            imageVector = category.icon(),
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
             style = WildexMenuButtonStyle.Secondary,
-            enabled = item.enabled,
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         )
-        // 비활성화 항목에 "준비중" 오버레이
-        if (!item.enabled) {
+        if (!enabled) {
             Box(
                 modifier = Modifier
                     .matchParentSize()

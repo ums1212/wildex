@@ -52,7 +52,7 @@ class CaptureRecordRepository(context: Context) {
             )
         }
 
-    suspend fun updateRecognition(id: Long, name: String, category: String) {
+    suspend fun updateRecognition(id: Long, name: String, category: String?) {
         runCatching { dao.updateRecognition(id, name, category) }
             .onFailure { Log.e(TAG, "updateRecognition 실패", it) }
     }
@@ -60,6 +60,21 @@ class CaptureRecordRepository(context: Context) {
     suspend fun updateMemo(id: Long, memo: String?) = withContext(Dispatchers.IO) {
         runCatching { dao.updateMemo(id, memo?.takeIf { it.isNotBlank() }) }
             .onFailure { Log.e(TAG, "updateMemo 실패", it) }
+    }
+
+    suspend fun updateName(id: Long, name: String?) = withContext(Dispatchers.IO) {
+        runCatching { dao.updateName(id, name) }
+            .onFailure { Log.e(TAG, "updateName 실패", it) }
+    }
+
+    suspend fun updateCategory(id: Long, category: String?) = withContext(Dispatchers.IO) {
+        runCatching { dao.updateCategory(id, category) }
+            .onFailure { Log.e(TAG, "updateCategory 실패", it) }
+    }
+
+    suspend fun updateAddress(id: Long, address: String) = withContext(Dispatchers.IO) {
+        runCatching { dao.updateAddress(id, address) }
+            .onFailure { Log.e(TAG, "updateAddress 실패", it) }
     }
 
     fun observeRecord(id: Long): Flow<CaptureRecordEntity?> = dao.observeById(id)
