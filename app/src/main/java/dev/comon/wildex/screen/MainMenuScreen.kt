@@ -132,6 +132,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import java.util.Locale
@@ -309,412 +310,421 @@ fun MainMenuScreen(
         )
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize().nestedScroll(nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            val topBarAnimModifier = animatedVisibilityScope?.run {
-                Modifier.animateEnterExit(
-                    enter = slideInVertically(
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                        initialOffsetY = { -it },
-                    ),
-                    exit = slideOutVertically(
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                        targetOffsetY = { -it },
-                    ),
-                )
-            } ?: Modifier
-            Column(
-                modifier = topBarAnimModifier
-                    .fillMaxWidth()
-                    .graphicsLayer { translationY = topBarTranslation }
-                    .background(MaterialTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .onGloballyPositioned { topBarHeightPx = it.size.height },
-            ) {
-                val showBackButton =
-                    (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) ||
-                    (selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack)
-                val backOnClick: () -> Unit = when {
-                    selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack -> recordsOnBack
-                    else -> journalOnBack
-                }
-                val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
-                val isRecordsSearchMode = selectedBottomTab == WildexRecordsTabRoute && recordsSearchMode && !recordsEditMode
-                val isJournalSearchMode = selectedBottomTab == WildexJournalTabRoute && journalSearchMode
-                val topBarMode = when {
-                    isRecordsEditMode -> MainMenuTopBarMode.RECORDS_EDIT
-                    isRecordsSearchMode -> MainMenuTopBarMode.RECORDS_SEARCH
-                    isJournalSearchMode -> MainMenuTopBarMode.JOURNAL_SEARCH
-                    else -> MainMenuTopBarMode.DEFAULT
-                }
-                AnimatedContent(
-                    targetState = topBarMode,
-                    transitionSpec = {
-                        (slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it } +
-                            fadeIn(tween(300, easing = FastOutSlowInEasing))) togetherWith
-                            (slideOutVertically(tween(300, easing = FastOutSlowInEasing)) { -it } +
-                                fadeOut(tween(300, easing = FastOutSlowInEasing)))
-                    },
-                    modifier = Modifier.fillMaxWidth().clipToBounds(),
-                    label = "topBarMode",
-                ) { mode ->
-                    when (mode) {
-                        MainMenuTopBarMode.DEFAULT -> MainMenuTopBarDefaultRow(
-                            showBackButton = showBackButton,
-                            backOnClick = backOnClick,
-                            isLoggedIn = isLoggedIn,
-                            userNickname = userNickname,
-                            onLoginClick = debouncedOnLoginClick,
-                            onProfileClick = { showLogoutDialog = true },
-                        )
-                        MainMenuTopBarMode.RECORDS_EDIT -> MainMenuTopBarRecordsEditRow(
-                            selectedCount = recordsSelectedCount,
-                            onExitEditMode = recordsOnExitEditMode,
-                            onRequestDelete = recordsOnRequestDelete,
-                        )
-                        MainMenuTopBarMode.RECORDS_SEARCH -> MainMenuTopBarRecordsSearchRow(
-                            searchCategory = recordsSearchCategory,
-                            onCategoryChange = recordsOnSearchCategoryChange,
-                            localSearchQuery = localSearchQuery,
-                            onLocalSearchQueryChange = { localSearchQuery = it },
-                            onSubmit = {
-                                recordsOnSearchQueryChange(localSearchQuery)
-                                recordsOnSearchSubmit()
-                            },
-                            onExitSearchMode = recordsOnExitSearchMode,
-                        )
-                        MainMenuTopBarMode.JOURNAL_SEARCH -> MainMenuTopBarJournalSearchRow(
-                            localSearchQuery = localJournalSearchQuery,
-                            onLocalSearchQueryChange = { localJournalSearchQuery = it },
-                            onSubmit = {
-                                journalOnSearchQueryChange(localJournalSearchQuery)
-                                journalOnSearchSubmit()
-                            },
-                            onExitSearchMode = journalOnExitSearchMode,
-                        )
-                    }
-                }
-                HorizontalDivider(
-                    modifier = Modifier
+    Box(modifier = modifier.fillMaxSize()) {
+        MainMenuTiledBackground()
+        Scaffold(
+            modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection),
+            containerColor = Color.Transparent,
+            topBar = {
+                val topBarAnimModifier = animatedVisibilityScope?.run {
+                    Modifier.animateEnterExit(
+                        enter = slideInVertically(
+                            animationSpec = tween(500, easing = FastOutSlowInEasing),
+                            initialOffsetY = { -it },
+                        ),
+                        exit = slideOutVertically(
+                            animationSpec = tween(500, easing = FastOutSlowInEasing),
+                            targetOffsetY = { -it },
+                        ),
+                    )
+                } ?: Modifier
+                Column(
+                    modifier = topBarAnimModifier
                         .fillMaxWidth()
-                        .height(WildexDimens.borderStrokeChunky)
-                        .background(WildexTheme.extraColors.cartridgeOutline),
-                )
-            }
-        },
-        bottomBar = {
-            val bottomBarAnimModifier = animatedVisibilityScope?.run {
-                Modifier.animateEnterExit(
-                    enter = slideInVertically(
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                        initialOffsetY = { it },
-                    ),
-                    exit = slideOutVertically(
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                        targetOffsetY = { it },
-                    ),
-                )
-            } ?: Modifier
-            AnimatedVisibility(
-                visible = selectedBottomTab != null,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(400, easing = FastOutSlowInEasing),
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(400, easing = FastOutSlowInEasing),
-                ),
-            ) {
-                Box(
-                    modifier = bottomBarAnimModifier
-                        .onGloballyPositioned { bottomBarHeightPx = it.size.height }
-                        .graphicsLayer { translationY = bottomBarTranslation },
+                        .graphicsLayer { translationY = topBarTranslation }
+//                        .background(MaterialTheme.colorScheme.surface)
+                        .statusBarsPadding()
+                        .onGloballyPositioned { topBarHeightPx = it.size.height },
                 ) {
-                    MainMenuBottomBar(
-                        selectedTab = selectedBottomTab,
-                        onTabClick = { tab ->
-                            val destination = navBackStackEntry?.destination
-                            if (destination.wildexSelectedMainBottomTab() == tab) {
-                                navController.popBackStack(WildexMainMenuRoute, inclusive = false)
-                            } else {
-                                navController.navigateToWildexMainBottomTab(tab)
-                            }
+                    val showBackButton =
+                        (selectedBottomTab == WildexJournalTabRoute && journalCanNavigateBack) ||
+                        (selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack)
+                    val backOnClick: () -> Unit = when {
+                        selectedBottomTab == WildexRecordsTabRoute && recordsCanNavigateBack -> recordsOnBack
+                        else -> journalOnBack
+                    }
+                    val isRecordsEditMode = selectedBottomTab == WildexRecordsTabRoute && recordsEditMode
+                    val isRecordsSearchMode = selectedBottomTab == WildexRecordsTabRoute && recordsSearchMode && !recordsEditMode
+                    val isJournalSearchMode = selectedBottomTab == WildexJournalTabRoute && journalSearchMode
+                    val topBarMode = when {
+                        isRecordsEditMode -> MainMenuTopBarMode.RECORDS_EDIT
+                        isRecordsSearchMode -> MainMenuTopBarMode.RECORDS_SEARCH
+                        isJournalSearchMode -> MainMenuTopBarMode.JOURNAL_SEARCH
+                        else -> MainMenuTopBarMode.DEFAULT
+                    }
+                    AnimatedContent(
+                        targetState = topBarMode,
+                        transitionSpec = {
+                            (slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it } +
+                                fadeIn(tween(300, easing = FastOutSlowInEasing))) togetherWith
+                                (slideOutVertically(tween(300, easing = FastOutSlowInEasing)) { -it } +
+                                    fadeOut(tween(300, easing = FastOutSlowInEasing)))
                         },
+                        modifier = Modifier.fillMaxWidth().clipToBounds(),
+                        label = "topBarMode",
+                    ) { mode ->
+                        when (mode) {
+                            MainMenuTopBarMode.DEFAULT -> MainMenuTopBarDefaultRow(
+                                showBackButton = showBackButton,
+                                backOnClick = backOnClick,
+                                isLoggedIn = isLoggedIn,
+                                userNickname = userNickname,
+                                onLoginClick = debouncedOnLoginClick,
+                                onProfileClick = { showLogoutDialog = true },
+                            )
+                            MainMenuTopBarMode.RECORDS_EDIT -> MainMenuTopBarRecordsEditRow(
+                                selectedCount = recordsSelectedCount,
+                                onExitEditMode = recordsOnExitEditMode,
+                                onRequestDelete = recordsOnRequestDelete,
+                            )
+                            MainMenuTopBarMode.RECORDS_SEARCH -> MainMenuTopBarRecordsSearchRow(
+                                searchCategory = recordsSearchCategory,
+                                onCategoryChange = recordsOnSearchCategoryChange,
+                                localSearchQuery = localSearchQuery,
+                                onLocalSearchQueryChange = { localSearchQuery = it },
+                                onSubmit = {
+                                    recordsOnSearchQueryChange(localSearchQuery)
+                                    recordsOnSearchSubmit()
+                                },
+                                onExitSearchMode = recordsOnExitSearchMode,
+                            )
+                            MainMenuTopBarMode.JOURNAL_SEARCH -> MainMenuTopBarJournalSearchRow(
+                                localSearchQuery = localJournalSearchQuery,
+                                onLocalSearchQueryChange = { localJournalSearchQuery = it },
+                                onSubmit = {
+                                    journalOnSearchQueryChange(localJournalSearchQuery)
+                                    journalOnSearchSubmit()
+                                },
+                                onExitSearchMode = journalOnExitSearchMode,
+                            )
+                        }
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(WildexDimens.borderStrokeChunky)
+                            .background(WildexTheme.extraColors.cartridgeOutline),
                     )
                 }
-            }
-        },
-    ) { _ ->
-        val contentAnimModifier = animatedVisibilityScope?.run {
-            Modifier.animateEnterExit(
-                enter = fadeIn(tween(1000, easing = FastOutSlowInEasing)),
-                exit = fadeOut(tween(1000, easing = FastOutSlowInEasing)),
-            )
-        } ?: Modifier
-        // innerPadding 대신 측정된 px 높이 + 현재 translation으로 직접 계산
-        // → bars 이동과 content padding이 같은 값을 공유해 완전히 동기화
-        val density = LocalDensity.current
-        val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val navBarPx = WindowInsets.navigationBars.getBottom(density).toFloat()
-        val contentTopPadding = with(density) {
-            (topBarHeightPx.toFloat() + topBarTranslation).coerceAtLeast(0f).toDp()
-        } + statusBarPadding
-        val contentBottomPadding = with(density) {
-            val barHeight = bottomBarHeightPx.toFloat() * bottomBarEntryProgress - bottomBarTranslation
-            barHeight.coerceAtLeast(navBarPx).toDp()
-        }
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            MainMenuTiledBackground()
-            SharedTransitionLayout(
-                modifier = contentAnimModifier
-                    .padding(top = contentTopPadding, bottom = contentBottomPadding)
-                    .fillMaxSize(),
-            ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = WildexMainMenuRoute,
-                    modifier = Modifier.fillMaxSize(),
+            },
+            bottomBar = {
+                val bottomBarAnimModifier = animatedVisibilityScope?.run {
+                    Modifier.animateEnterExit(
+                        enter = slideInVertically(
+                            animationSpec = tween(500, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it },
+                        ),
+                        exit = slideOutVertically(
+                            animationSpec = tween(500, easing = FastOutSlowInEasing),
+                            targetOffsetY = { it },
+                        ),
+                    )
+                } ?: Modifier
+                AnimatedVisibility(
+                    visible = selectedBottomTab != null,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                    ),
+                    exit = slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                    ),
                 ) {
-                    composable<WildexMainMenuRoute>(
-                        enterTransition = {
-                            scaleIn(
-                                initialScale = 0f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
-                        },
-                        exitTransition = {
-                            scaleOut(
-                                targetScale = 0f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
-                        },
-                        popEnterTransition = {
-                            scaleIn(
-                                initialScale = 0f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
-                        },
-                        popExitTransition = {
-                            scaleOut(
-                                targetScale = 0f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
-                        },
+                    Box(
+                        modifier = bottomBarAnimModifier
+                            .onGloballyPositioned { bottomBarHeightPx = it.size.height }
+                            .graphicsLayer { translationY = bottomBarTranslation },
                     ) {
-                        MainMenuHomeContent(
-                            onCaptureClick = {
-                                navController.navigateToWildexMainBottomTab(WildexCaptureTabRoute)
-                            },
-                            onJournalClick = {
-                                navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
-                            },
-                            onSettingsClick = {
-                                navController.navigateToWildexMainBottomTab(WildexSettingsTabRoute)
-                            },
-                            onRecordsClick = {
-                                navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
+                        MainMenuBottomBar(
+                            selectedTab = selectedBottomTab,
+                            onTabClick = { tab ->
+                                val destination = navBackStackEntry?.destination
+                                if (destination.wildexSelectedMainBottomTab() == tab) {
+                                    navController.popBackStack(WildexMainMenuRoute, inclusive = false)
+                                } else {
+                                    navController.navigateToWildexMainBottomTab(tab)
+                                }
                             },
                         )
-                    }
-                    composable<WildexJournalTabRoute>(
-                        enterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { -it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { -it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popEnterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { -it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { -it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                    ) {
-                        JournalScreen(
-                            onBackNavigationState = { canNavigateBack, onBack, _ ->
-                                journalCanNavigateBack = canNavigateBack
-                                journalOnBack = onBack
-                            },
-                            onSearchModeStateChanged = { isSearch, _, onQ, onSubmit, onExit ->
-                                journalSearchMode = isSearch
-                                journalOnSearchQueryChange = onQ
-                                journalOnSearchSubmit = onSubmit
-                                journalOnExitSearchMode = onExit
-                            },
-                            pendingSpeciesId = pendingCaptureSpeciesId,
-                            pendingRecordId = pendingCaptureRecordId,
-                            onPendingSpeciesIdConsumed = {
-                                pendingCaptureSpeciesId = null
-                                pendingCaptureRecordId = null
-                            },
-                            onNavigateToRecordDetail = { recordId ->
-                                pendingRecordDetailId = recordId
-                                navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
-                            },
-                        )
-                    }
-                    composable<WildexCaptureTabRoute>(
-                        enterTransition = {
-                            slideInVertically(
-                                initialOffsetY = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        exitTransition = {
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popEnterTransition = {
-                            slideInVertically(
-                                initialOffsetY = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                    ) {
-                        CaptureScreen(
-                            animatedVisibilityScope = this,
-                            onNavigateToBirdInfo = { speciesId, recordId ->
-                                pendingCaptureSpeciesId = speciesId
-                                pendingCaptureRecordId = recordId
-                                navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
-                            },
-                            onAnalyzingChanged = { captureAnalyzing = it },
-                        )
-                    }
-                    composable<WildexCaptureResultRoute>(
-                        enterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popEnterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                    ) { backStackEntry ->
-                        val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
-                        CaptureResultScreen(speciesId = route.speciesId)
-                    }
-                    composable<WildexRecordsTabRoute>(
-                        enterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popEnterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                    ) {
-                        RecordsScreen(
-                            onBackNavigationState = { canNavigateBack, onBack ->
-                                recordsCanNavigateBack = canNavigateBack
-                                recordsOnBack = onBack
-                            },
-                            onEditModeStateChanged = { isEdit, count, onExit, onDelete ->
-                                recordsEditMode = isEdit
-                                recordsSelectedCount = count
-                                recordsOnExitEditMode = onExit
-                                recordsOnRequestDelete = onDelete
-                            },
-                            onSearchModeStateChanged = { isSearch, cat, _, onCat, onQ, onSubmit, onExit ->
-                                recordsSearchMode = isSearch
-                                recordsSearchCategory = cat
-                                recordsOnSearchCategoryChange = onCat
-                                recordsOnSearchQueryChange = onQ
-                                recordsOnSearchSubmit = onSubmit
-                                recordsOnExitSearchMode = onExit
-                            },
-                            pendingRecordId = pendingRecordDetailId,
-                            onPendingRecordIdConsumed = { pendingRecordDetailId = null },
-                        )
-                    }
-                    composable<WildexSettingsTabRoute>(
-                        enterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popEnterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing),
-                            )
-                        },
-                    ) {
-                        SettingsScreen()
                     }
                 }
-            } // SharedTransitionLayout
-        } // Box
-    }
+            },
+        ) { _ ->
+            val contentAnimModifier = animatedVisibilityScope?.run {
+                Modifier.animateEnterExit(
+                    enter = fadeIn(tween(1000, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(tween(1000, easing = FastOutSlowInEasing)),
+                )
+            } ?: Modifier
+            // innerPadding 대신 측정된 px 높이 + 현재 translation으로 직접 계산
+            // → bars 이동과 content padding이 같은 값을 공유해 완전히 동기화
+            val density = LocalDensity.current
+            val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val navBarPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+            val contentTopPadding = with(density) {
+                (topBarHeightPx.toFloat() + topBarTranslation).coerceAtLeast(0f).toDp()
+            } + statusBarPadding
+            val contentBottomPadding = with(density) {
+                val barHeight = bottomBarHeightPx.toFloat() * bottomBarEntryProgress - bottomBarTranslation
+                barHeight.coerceAtLeast(navBarPx).toDp()
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                SharedTransitionLayout(
+                    modifier = contentAnimModifier
+                        .padding(top = contentTopPadding, bottom = contentBottomPadding)
+                        .fillMaxSize(),
+                ) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = WildexMainMenuRoute,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        composable<WildexMainMenuRoute>(
+                            enterTransition = {
+                                scaleIn(
+                                    initialScale = 0f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                            },
+                            exitTransition = {
+                                scaleOut(
+                                    targetScale = 0f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
+                            },
+                            popEnterTransition = {
+                                scaleIn(
+                                    initialScale = 0f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                ) + fadeIn(tween(500, easing = FastOutSlowInEasing))
+                            },
+                            popExitTransition = {
+                                scaleOut(
+                                    targetScale = 0f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                ) + fadeOut(tween(500, easing = FastOutSlowInEasing))
+                            },
+                        ) {
+                            MainMenuHomeContent(
+                                onCaptureClick = {
+                                    navController.navigateToWildexMainBottomTab(WildexCaptureTabRoute)
+                                },
+                                onJournalClick = {
+                                    navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
+                                },
+                                onSettingsClick = {
+                                    navController.navigateToWildexMainBottomTab(WildexSettingsTabRoute)
+                                },
+                                onRecordsClick = {
+                                    navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
+                                },
+                            )
+                        }
+                        composable<WildexJournalTabRoute>(
+                            enterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { -it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { -it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { -it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { -it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                        ) {
+                            JournalScreen(
+                                onBackNavigationState = { canNavigateBack, onBack, _ ->
+                                    journalCanNavigateBack = canNavigateBack
+                                    journalOnBack = onBack
+                                },
+                                onSearchModeStateChanged = { isSearch, _, onQ, onSubmit, onExit ->
+                                    journalSearchMode = isSearch
+                                    journalOnSearchQueryChange = onQ
+                                    journalOnSearchSubmit = onSubmit
+                                    journalOnExitSearchMode = onExit
+                                },
+                                pendingSpeciesId = pendingCaptureSpeciesId,
+                                pendingRecordId = pendingCaptureRecordId,
+                                onPendingSpeciesIdConsumed = {
+                                    pendingCaptureSpeciesId = null
+                                    pendingCaptureRecordId = null
+                                },
+                                onNavigateToRecordDetail = { recordId ->
+                                    pendingRecordDetailId = recordId
+                                    navController.navigateToWildexMainBottomTab(WildexRecordsTabRoute)
+                                },
+                            )
+                        }
+                        composable<WildexCaptureTabRoute>(
+                            enterTransition = {
+                                slideInVertically(
+                                    initialOffsetY = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popEnterTransition = {
+                                slideInVertically(
+                                    initialOffsetY = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                        ) {
+                            CaptureScreen(
+                                animatedVisibilityScope = this,
+                                onNavigateToBirdInfo = { speciesId, recordId ->
+                                    pendingCaptureSpeciesId = speciesId
+                                    pendingCaptureRecordId = recordId
+                                    navController.navigateToWildexMainBottomTab(WildexJournalTabRoute)
+                                },
+                                onAnalyzingChanged = { captureAnalyzing = it },
+                            )
+                        }
+                        composable<WildexCaptureResultRoute>(
+                            enterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                        ) { backStackEntry ->
+                            val route = backStackEntry.toRoute<WildexCaptureResultRoute>()
+                            CaptureResultScreen(speciesId = route.speciesId)
+                        }
+                        composable<WildexRecordsTabRoute>(
+                            enterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                        ) {
+                            RecordsScreen(
+                                onBackNavigationState = { canNavigateBack, onBack ->
+                                    recordsCanNavigateBack = canNavigateBack
+                                    recordsOnBack = onBack
+                                },
+                                onEditModeStateChanged = { isEdit, count, onExit, onDelete ->
+                                    recordsEditMode = isEdit
+                                    recordsSelectedCount = count
+                                    recordsOnExitEditMode = onExit
+                                    recordsOnRequestDelete = onDelete
+                                },
+                                onSearchModeStateChanged = { isSearch, cat, _, onCat, onQ, onSubmit, onExit ->
+                                    recordsSearchMode = isSearch
+                                    recordsSearchCategory = cat
+                                    recordsOnSearchCategoryChange = onCat
+                                    recordsOnSearchQueryChange = onQ
+                                    recordsOnSearchSubmit = onSubmit
+                                    recordsOnExitSearchMode = onExit
+                                },
+                                pendingRecordId = pendingRecordDetailId,
+                                onPendingRecordIdConsumed = { pendingRecordDetailId = null },
+                            )
+                        }
+                        composable<WildexSettingsTabRoute>(
+                            enterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                                )
+                            },
+                        ) {
+                            SettingsScreen()
+                        }
+                    }
+                } // SharedTransitionLayout
+            } // Box
+        }
+    // topBar 슬라이드 아웃 시 divider가 status bar 영역에 노출되지 않도록 고정 오버레이
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+            .background(MaterialTheme.colorScheme.surface),
+    )
+    } // outer Box
 }
 
 @Composable
