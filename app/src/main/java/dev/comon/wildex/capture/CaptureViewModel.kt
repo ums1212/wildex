@@ -64,15 +64,21 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
 
-            CaptureIntent.ZoomIn -> _state.update { s ->
-                s.copy(
-                    zoomRatio = (s.zoomRatio + ZoomStep).coerceIn(s.zoomMin, s.zoomMax),
-                )
+            CaptureIntent.ZoomIn -> {
+                _state.update { s ->
+                    s.copy(zoomRatio = (s.zoomRatio + ZoomStep).coerceIn(s.zoomMin, s.zoomMax))
+                }
+                viewModelScope.launch {
+                    _events.send(CaptureUiEvent.ShowSnackbar("ZOOM %.1fx".format(_state.value.zoomRatio)))
+                }
             }
-            CaptureIntent.ZoomOut -> _state.update { s ->
-                s.copy(
-                    zoomRatio = (s.zoomRatio - ZoomStep).coerceIn(s.zoomMin, s.zoomMax),
-                )
+            CaptureIntent.ZoomOut -> {
+                _state.update { s ->
+                    s.copy(zoomRatio = (s.zoomRatio - ZoomStep).coerceIn(s.zoomMin, s.zoomMax))
+                }
+                viewModelScope.launch {
+                    _events.send(CaptureUiEvent.ShowSnackbar("ZOOM %.1fx".format(_state.value.zoomRatio)))
+                }
             }
 
             CaptureIntent.ToggleIso -> _state.update { it.copy(isoAuto = !it.isoAuto) }
